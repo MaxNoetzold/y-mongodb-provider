@@ -1,0 +1,56 @@
+{
+  "name": "y-mongodb-provider",
+  "version": "0.1.1",
+  "description": "Mongodb database adapter for Yjs",
+  "main": "./dist/y-mongodb.cjs",
+  "module": "./src/y-mongodb.js",
+  "scripts": {
+    "dist": "rollup -c",
+    "clean": "rm -rf dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MaxNoetzold/y-mongodb-provider.git"
+  },
+  "author": "Max Nötzold <max.noetzold@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MaxNoetzold/y-mongodb-provider/issues"
+  },
+  "dependencies": {
+    "lib0": "^0.2.32",
+    "mongoist": "^2.5.2",
+    "mongojs": "^3.1.0"
+  },
+  "peerDependencies": {
+    "yjs": "^13.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^14.0.0",
+    "@rollup/plugin-json": "^4.1.0",
+    "@rollup/plugin-node-resolve": "^8.4.0",
+    "rollup": "^2.21.0",
+    "rollup-plugin-node-polyfills": "^0.2.1",
+    "standard": "^14.3.4",
+    "yjs": "^13.3.0"
+  },
+  "files": [
+	"dist/*",
+    "src/*"
+  ],
+  "homepage": "https://github.com/MaxNoetzold/y-mongodb-provider#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MaxNoetzold/y-mongodb-provider.git"
+  },
+  "keywords": [
+    "Yjs",
+    "Y-mongodb",
+    "shared editing",
+    "collaboration",
+    "offline",
+    "CRDT",
+    "concurrency",
+    "persistence"
+  ]
+}
