@@ -35,14 +35,10 @@
     "yjs": "^13.3.0"
   },
   "files": [
-	"dist/*",
+    "dist/*",
     "src/*"
   ],
   "homepage": "https://github.com/MaxNoetzold/y-mongodb-provider#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/MaxNoetzold/y-mongodb-provider.git"
-  },
   "keywords": [
     "Yjs",
     "Y-mongodb",

@@ -1,23 +1,34 @@
 import * as Y from "yjs";
 import * as binary from "lib0/binary";
 import * as promise from "lib0/promise";
-import { Buffer } from "buffer";
 import { MongoAdapter } from "./mongo-adapter";
 import * as U from "./utils";
 
 export class MongodbPersistence {
 	/**
 	 * Create a y-mongodb persistence instance.
-	 * @param {string} location
-	 * @param {object} [opts.collectionName = "yjs-writings", opts.flushSize = 400, opts.multipleCollections = false]
+	 * @param {string} location The connection string for the MongoDB instance.
+	 * @param {object} [opts=] Additional optional parameters.
+	 * @param {string} [opts.collectionName="yjs-writings"] Name of the collection where all documents are stored. Default: "yjs-writings"
+	 * @param {boolean} [opts.multipleCollections=false] When set to true, each document gets an own collection (instead of all documents stored in the same one). When set to true, the option collectionName gets ignored. Default: false
+	 * @param {number} [opts.flushSize=400] The number of stored transactions needed until they are merged automatically into one Mongodb document. Default: 400
 	 */
-	constructor(location, options) {
+	constructor(location, {collectionName = "yjs-writings", multipleCollections = false, flushSize = 400} = {}) {
+		if (typeof collectionName !== "string" || !collectionName) {
+			throw new Error('Constructor option "collectionName" is not a valid string. Either dont use this option (default is "yjs-writings") or use a valid string! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object')
+		}
+		if (typeof multipleCollections !== "boolean") {
+			throw new Error('Constructor option "multipleCollections" is not a boolean. Either dont use this option (default is "false") or use a valid boolean! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object')
+		}
+		if (typeof flushSize !== "number" || flushSize <= 0) {
+			throw new Error('Constructor option "flushSize" is not a valid number. Either dont use this option (default is "400") or use a valid number larger than 0! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object')
+		}
 		const db = new MongoAdapter(location, {
-			collection: options?.collectionName ?? "yjs-writings",
-			multipleCollections: !!options?.multipleCollections,
+			collection: collectionName,
+			multipleCollections: multipleCollections,
 		});
-		this.flushSize = options?.flushSize ?? U.PREFERRED_TRIM_SIZE;
-		this.multipleCollections = !!options?.multipleCollections;
+		this.flushSize = flushSize ?? U.PREFERRED_TRIM_SIZE;
+		this.multipleCollections = multipleCollections;
 
 		// scope the queue of the transaction to each docName
 		// -> this should allow concurrency for different rooms
@@ -202,7 +213,7 @@ export class MongodbPersistence {
 	 * Retrieve the state vectors of all stored documents. You can use this to sync two y-leveldb instances.
 	 * !Note: The state vectors might be outdated if the associated document is not yet flushed. So use with caution.
 	 * @return {Promise<Array<{ name: string, sv: Uint8Array, clock: number }>>}
-	 * @todo funktioniert nicht
+	 * @todo may not work?
 	 */
 	getAllDocStateVectors() {
 		return this._transact("global", async db => {
@@ -216,7 +227,7 @@ export class MongodbPersistence {
 
 	/**
 	 * Internally y-mongodb stores incremental updates. You can merge all document updates to a single entry. You probably never have to use this.
-	 * It is done automatically every 400 transactions.
+	 * It is done automatically every options.flushsize (default 400) transactions.
 	 *
 	 * @param {string} docName
 	 * @return {Promise<void>}
@@ -231,6 +242,7 @@ export class MongodbPersistence {
 
 	/**
 	 * Delete the whole yjs mongodb
+	 * @return {Promise<void>}
 	 */
 	flushDB() {
 		return this._transact("global", async db => {

@@ -25,6 +25,7 @@ export const clearUpdatesRange = async (db, docName, from, to) =>
 	});
 
 /**
+ * Merge all MongoDB documents of the same yjs document together.
  * @param {any} db
  * @param {string} docName
  * @param {Uint8Array} stateAsUpdate
