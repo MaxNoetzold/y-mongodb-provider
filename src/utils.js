@@ -1,8 +1,8 @@
-import * as Y from "yjs";
-import * as binary from "lib0/binary";
-import * as encoding from "lib0/encoding";
-import * as decoding from "lib0/decoding";
-import { Buffer } from "buffer";
+import * as Y from 'yjs';
+import * as binary from 'lib0/binary';
+import * as encoding from 'lib0/encoding';
+import * as decoding from 'lib0/decoding';
+import { Buffer } from 'buffer';
 
 export const PREFERRED_TRIM_SIZE = 400;
 
@@ -15,29 +15,13 @@ export const PREFERRED_TRIM_SIZE = 400;
  * @param {number} to lower than (not equal)
  * @return {Promise<void>}
  */
-export const clearUpdatesRange = async (db, docName, from, to) =>
-	db.del({
-		docName,
-		clock: {
-			$gte: from,
-			$lt: to,
-		},
-	});
-
-/**
- * Merge all MongoDB documents of the same yjs document together.
- * @param {any} db
- * @param {string} docName
- * @param {Uint8Array} stateAsUpdate
- * @param {Uint8Array} stateVector
- * @return {Promise<number>} returns the clock of the flushed doc
- */
-export const flushDocument = async (db, docName, stateAsUpdate, stateVector) => {
-	const clock = await storeUpdate(db, docName, stateAsUpdate);
-	await writeStateVector(db, docName, stateVector, clock);
-	await clearUpdatesRange(db, docName, 0, clock);
-	return clock;
-};
+export const clearUpdatesRange = async (db, docName, from, to) => db.del({
+	docName,
+	clock: {
+		$gte: from,
+		$lt: to,
+	},
+});
 
 /**
  * Create a unique key for a update message.
@@ -48,15 +32,15 @@ export const flushDocument = async (db, docName, stateAsUpdate, stateVector) => 
 export const createDocumentUpdateKey = (docName, clock) => {
 	if (clock !== undefined) {
 		return {
-			version: "v1",
-			action: "update",
+			version: 'v1',
+			action: 'update',
 			docName,
 			clock,
 		};
 	} else {
 		return {
-			version: "v1",
-			action: "update",
+			version: 'v1',
+			action: 'update',
 			docName,
 		};
 	}
@@ -67,25 +51,21 @@ export const createDocumentUpdateKey = (docName, clock) => {
  * @param {string} docName
  * @return {Object} [opts.docName, opts.version]
  */
-export const createDocumentStateVectorKey = docName => {
-	return {
-		docName,
-		version: "v1_sv",
-	};
-};
+export const createDocumentStateVectorKey = (docName) => ({
+	docName,
+	version: 'v1_sv',
+});
 
 /**
  * @param {string} docName
  * @param {string} metaKey
  * @return {Object} [opts.docName, opts.version, opts.docType, opts.metaKey]
  */
-export const createDocumentMetaKey = (docName, metaKey) => {
-	return {
-		version: "v1",
-		docName,
-		metaKey: `meta_${metaKey}`,
-	};
-};
+export const createDocumentMetaKey = (docName, metaKey) => ({
+	version: 'v1',
+	docName,
+	metaKey: `meta_${metaKey}`,
+});
 
 /**
  * @param {any} db
@@ -99,7 +79,7 @@ export const getMongoBulkData = (db, query, opts) => db.readAsCursor(query, opts
  * @param {any} db
  * @return {Promise<any>}
  */
-export const flushDB = db => db.flush();
+export const flushDB = (db) => db.flush();
 
 /**
  * Convert the mongo document array to an array of values (as buffers)
@@ -107,10 +87,10 @@ export const flushDB = db => db.flush();
  * @param {<Array<Object>>} docs
  * @return {<Array<Buffer>>}
  */
-const _convertMongoUpdates = docs => {
+const _convertMongoUpdates = (docs) => {
 	if (!Array.isArray(docs) || !docs.length) return [];
 
-	return docs.map(update => update.value.buffer);
+	return docs.map((update) => update.value.buffer);
 };
 /**
  * Get all document updates for a specific document.
@@ -130,30 +110,30 @@ export const getMongoUpdates = async (db, docName, opts = {}) => {
  * @param {string} docName
  * @return {Promise<number>} Returns -1 if this document doesn't exist yet
  */
-export const getCurrentUpdateClock = (db, docName) =>
-	getMongoBulkData(
-		db,
-		{
-			...createDocumentUpdateKey(docName, 0),
-			clock: {
-				$gte: 0,
-				$lt: binary.BITS32,
-			},
+export const getCurrentUpdateClock = (db, docName) => getMongoBulkData(
+	db,
+	{
+		...createDocumentUpdateKey(docName, 0),
+		clock: {
+			$gte: 0,
+			$lt: binary.BITS32,
 		},
-		{ reverse: true, limit: 1 }
-	).then(updates => {
-		if (updates.length === 0) {
-			return -1;
-		} else {
-			return updates[0].clock;
-		}
-	});
+	},
+	{ reverse: true, limit: 1 },
+).then((updates) => {
+	if (updates.length === 0) {
+		return -1;
+	} else {
+		return updates[0].clock;
+	}
+});
 
 /**
  * @param {any} db
  * @param {string} docName
  * @param {Uint8Array} sv state vector
- * @param {number} clock current clock of the document so we can determine when this statevector was created
+ * @param {number} clock current clock of the document so we can determine
+ * when this statevector was created
  */
 export const writeStateVector = async (db, docName, sv, clock) => {
 	const encoder = encoding.createEncoder();
@@ -194,7 +174,7 @@ export const storeUpdate = async (db, docName, update) => {
  * @param {Array<Uint8Array>} updates
  * @return {{update:Uint8Array, sv: Uint8Array}}
  */
-export const mergeUpdates = updates => {
+export const mergeUpdates = (updates) => {
 	const ydoc = new Y.Doc();
 	ydoc.transact(() => {
 		for (let i = 0; i < updates.length; i++) {
@@ -208,14 +188,14 @@ export const mergeUpdates = updates => {
  * @param {Uint8Array} buf
  * @return {{ sv: Uint8Array, clock: number }}
  */
-export const decodeMongodbStateVector = buf => {
+export const decodeMongodbStateVector = (buf) => {
 	let decoder;
 	if (Buffer.isBuffer(buf)) {
 		decoder = decoding.createDecoder(buf);
 	} else if (Buffer.isBuffer(buf?.buffer)) {
 		decoder = decoding.createDecoder(buf.buffer);
 	} else {
-		throw new Error("No buffer provided at decodeMongodbStateVector()");
+		throw new Error('No buffer provided at decodeMongodbStateVector()');
 	}
 	const clock = decoding.readVarUint(decoder);
 	const sv = decoding.readVarUint8Array(decoder);
@@ -235,6 +215,19 @@ export const readStateVector = async (db, docName) => {
 	return decodeMongodbStateVector(doc.value);
 };
 
-export const getAllSVDocs = async db => {
-	return db.readAsCursor({ version: "v1_sv" });
+export const getAllSVDocs = async (db) => db.readAsCursor({ version: 'v1_sv' });
+
+/**
+ * Merge all MongoDB documents of the same yjs document together.
+ * @param {any} db
+ * @param {string} docName
+ * @param {Uint8Array} stateAsUpdate
+ * @param {Uint8Array} stateVector
+ * @return {Promise<number>} returns the clock of the flushed doc
+ */
+export const flushDocument = async (db, docName, stateAsUpdate, stateVector) => {
+	const clock = await storeUpdate(db, docName, stateAsUpdate);
+	await writeStateVector(db, docName, stateVector, clock);
+	await clearUpdatesRange(db, docName, 0, clock);
+	return clock;
 };
