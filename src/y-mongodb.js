@@ -146,13 +146,18 @@ export class MongodbPersistence {
 
 	/**
 	 * Delete a document, and all associated data from the database.
+	 * When option multipleCollections is set, it removes the corresponding collection
 	 * @param {string} docName
 	 * @return {Promise<void>}
 	 */
 	clearDocument(docName) {
 		return this._transact(docName, async (db) => {
-			await db.del(U.createDocumentStateVectorKey(docName));
-			await U.clearUpdatesRange(db, docName, 0, binary.BITS32);
+			if (!this.multipleCollections) {
+				await db.del(U.createDocumentStateVectorKey(docName));
+				await U.clearUpdatesRange(db, docName, 0, binary.BITS32);
+			} else {
+				await db.dropCollection(docName);
+			}
 		});
 	}
 

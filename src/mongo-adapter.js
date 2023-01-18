@@ -123,4 +123,12 @@ export class MongoAdapter {
 		await this.db.dropDatabase();
 		await this.db.close();
 	}
+
+	/**
+	 * Delete collection
+	 * @param {string} collectionName
+	 */
+	dropCollection(collectionName) {
+		return this.db[collectionName].drop();
+	}
 }
