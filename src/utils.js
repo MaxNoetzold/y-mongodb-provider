@@ -15,13 +15,14 @@ export const PREFERRED_TRIM_SIZE = 400;
  * @param {number} to lower than (not equal)
  * @return {Promise<void>}
  */
-export const clearUpdatesRange = async (db, docName, from, to) => db.del({
-	docName,
-	clock: {
-		$gte: from,
-		$lt: to,
-	},
-});
+export const clearUpdatesRange = async (db, docName, from, to) =>
+	db.del({
+		docName,
+		clock: {
+			$gte: from,
+			$lt: to,
+		},
+	});
 
 /**
  * Create a unique key for a update message.
@@ -110,23 +111,24 @@ export const getMongoUpdates = async (db, docName, opts = {}) => {
  * @param {string} docName
  * @return {Promise<number>} Returns -1 if this document doesn't exist yet
  */
-export const getCurrentUpdateClock = (db, docName) => getMongoBulkData(
-	db,
-	{
-		...createDocumentUpdateKey(docName, 0),
-		clock: {
-			$gte: 0,
-			$lt: binary.BITS32,
+export const getCurrentUpdateClock = (db, docName) =>
+	getMongoBulkData(
+		db,
+		{
+			...createDocumentUpdateKey(docName, 0),
+			clock: {
+				$gte: 0,
+				$lt: binary.BITS32,
+			},
 		},
-	},
-	{ reverse: true, limit: 1 },
-).then((updates) => {
-	if (updates.length === 0) {
-		return -1;
-	} else {
-		return updates[0].clock;
-	}
-});
+		{ reverse: true, limit: 1 },
+	).then((updates) => {
+		if (updates.length === 0) {
+			return -1;
+		} else {
+			return updates[0].clock;
+		}
+	});
 
 /**
  * @param {any} db

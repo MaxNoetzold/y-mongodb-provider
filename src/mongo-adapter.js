@@ -1,4 +1,3 @@
-import mongojs from 'mongojs';
 import mongoist from 'mongoist';
 
 export class MongoAdapter {
@@ -23,13 +22,7 @@ export class MongoAdapter {
 	 * Open the connection to MongoDB instance.
 	 */
 	open() {
-		let mongojsDb;
-		if (this.multipleCollections) {
-			mongojsDb = mongojs(this.location);
-		} else {
-			mongojsDb = mongojs(this.location, [this.collection]);
-		}
-		this.db = mongoist(mongojsDb);
+		this.db = mongoist(this.location);
 	}
 
 	/**

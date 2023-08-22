@@ -19,13 +19,19 @@ export class MongodbPersistence {
 	 */
 	constructor(location, { collectionName = 'yjs-writings', multipleCollections = false, flushSize = 400 } = {}) {
 		if (typeof collectionName !== 'string' || !collectionName) {
-			throw new Error('Constructor option "collectionName" is not a valid string. Either dont use this option (default is "yjs-writings") or use a valid string! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object');
+			throw new Error(
+				'Constructor option "collectionName" is not a valid string. Either dont use this option (default is "yjs-writings") or use a valid string! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object',
+			);
 		}
 		if (typeof multipleCollections !== 'boolean') {
-			throw new Error('Constructor option "multipleCollections" is not a boolean. Either dont use this option (default is "false") or use a valid boolean! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object');
+			throw new Error(
+				'Constructor option "multipleCollections" is not a boolean. Either dont use this option (default is "false") or use a valid boolean! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object',
+			);
 		}
 		if (typeof flushSize !== 'number' || flushSize <= 0) {
-			throw new Error('Constructor option "flushSize" is not a valid number. Either dont use this option (default is "400") or use a valid number larger than 0! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object');
+			throw new Error(
+				'Constructor option "flushSize" is not a valid number. Either dont use this option (default is "400") or use a valid number larger than 0! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object',
+			);
 		}
 		const db = new MongoAdapter(location, {
 			collection: collectionName,
@@ -189,7 +195,9 @@ export class MongodbPersistence {
 	 */
 	getMeta(docName, metaKey) {
 		return this._transact(docName, async (db) => {
-			const res = await db.get({ ...U.createDocumentMetaKey(docName, metaKey) });
+			const res = await db.get({
+				...U.createDocumentMetaKey(docName, metaKey),
+			});
 			if (!res?.value) {
 				return undefined;
 			}
@@ -205,9 +213,11 @@ export class MongodbPersistence {
 	 * @return {Promise<any>}
 	 */
 	delMeta(docName, metaKey) {
-		return this._transact(docName, (db) => db.del({
-			...U.createDocumentMetaKey(docName, metaKey),
-		}));
+		return this._transact(docName, (db) =>
+			db.del({
+				...U.createDocumentMetaKey(docName, metaKey),
+			}),
+		);
 	}
 
 	/**
