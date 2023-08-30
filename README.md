@@ -62,7 +62,7 @@ yUtils.setPersistence({
   writeState: async (docName, ydoc) => {
     // This is called when all connections to the document are closed.
     // In the future, this method might also be called in intervals or after a certain number of updates.
-    return new Prosime(resolve => {
+    return new Promise(resolve => {
       // When the returned Promise resolves, the document will be destroyed.
       // So make sure that the document really has been written to the database.
       resolve()
