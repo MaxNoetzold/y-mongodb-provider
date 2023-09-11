@@ -4,8 +4,9 @@
 	"description": "Mongodb database adapter for Yjs",
 	"main": "./dist/y-mongodb.cjs",
 	"module": "./src/y-mongodb.js",
+	"types": "./dist/y-mongodb.d.ts",
 	"scripts": {
-		"dist": "rollup -c",
+		"dist": "rollup -c && tsc",
 		"clean": "rm -rf dist"
 	},
 	"repository": {
@@ -28,12 +29,14 @@
 		"@rollup/plugin-commonjs": "^14.0.0",
 		"@rollup/plugin-json": "^4.1.0",
 		"@rollup/plugin-node-resolve": "^8.4.0",
+		"@types/node": "^20.6.0",
 		"eslint": "^8.31.0",
 		"eslint-config-airbnb-base": "^15.0.0",
 		"eslint-plugin-import": "^2.26.0",
 		"rollup": "^2.21.0",
 		"rollup-plugin-node-polyfills": "^0.2.1",
 		"standard": "^14.3.4",
+		"typescript": "^4.9.5",
 		"yjs": "^13.3.0"
 	},
 	"files": [

@@ -8,16 +8,17 @@ export class MongodbPersistence {
 	/**
 	 * Create a y-mongodb persistence instance.
 	 * @param {string} location The connection string for the MongoDB instance.
-	 * @param {object} [opts=] Additional optional parameters.
-	 * @param {string} [opts.collectionName="yjs-writings"] Name of the collection where all
+	 * @param {object} [opts] Additional optional parameters.
+	 * @param {string} [opts.collectionName] Name of the collection where all
 	 * documents are stored. Default: "yjs-writings"
-	 * @param {boolean} [opts.multipleCollections=false] When set to true, each document gets
+	 * @param {boolean} [opts.multipleCollections] When set to true, each document gets
 	 * an own collection (instead of all documents stored in the same one). When set to true,
 	 * the option collectionName gets ignored. Default: false
-	 * @param {number} [opts.flushSize=400] The number of stored transactions needed until
+	 * @param {number} [opts.flushSize] The number of stored transactions needed until
 	 * they are merged automatically into one Mongodb document. Default: 400
 	 */
-	constructor(location, { collectionName = 'yjs-writings', multipleCollections = false, flushSize = 400 } = {}) {
+	constructor(location, opts = {}) {
+		const { collectionName, multipleCollections, flushSize } = { collectionName: 'yjs-writings', multipleCollections: false, flushSize: 400 , ...opts }
 		if (typeof collectionName !== 'string' || !collectionName) {
 			throw new Error(
 				'Constructor option "collectionName" is not a valid string. Either dont use this option (default is "yjs-writings") or use a valid string! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object',
@@ -223,7 +224,7 @@ export class MongodbPersistence {
 	/**
 	 * Retrieve the names of all stored documents.
 	 *
-	 * @return {Promise<Array<string>>}
+	 * @return {Promise<string[]>}
 	 */
 	getAllDocNames() {
 		return this._transact('global', async (db) => {
@@ -244,7 +245,7 @@ export class MongodbPersistence {
 	 * You can use this to sync two y-leveldb instances.
 	 * !Note: The state vectors might be outdated if the associated document
 	 * is not yet flushed. So use with caution.
-	 * @return {Promise<Array<{ name: string, sv: Uint8Array, clock: number }>>}
+	 * @return {Promise<{ name: string, sv: Uint8Array, clock: number }[]>}
 	 * @todo may not work?
 	 */
 	getAllDocStateVectors() {

@@ -4,9 +4,9 @@ export class MongoAdapter {
 	/**
 	 * Create a MongoAdapter instance.
 	 * @param {string} location
-	 * @param {object} [opts]
-	 * @param {string} [opts.collection] Name of the collection where all documents are stored.
-	 * @param {boolean} [opts.multipleCollections] When set to true, each document gets an own
+	 * @param {object} opts
+	 * @param {string} opts.collection Name of the collection where all documents are stored.
+	 * @param {boolean} opts.multipleCollections When set to true, each document gets an own
 	 * collection (instead of all documents stored in the same one).
 	 * When set to true, the option $collection gets ignored.
 	 */
@@ -27,8 +27,8 @@ export class MongoAdapter {
 
 	/**
 	 * Get the MongoDB collection name for any docName
-	 * @param {object} [opts]
-	 * @param {string} [opts.docName]
+	 * @param {object} opts
+	 * @param {string} opts.docName
 	 * @returns {string} collectionName
 	 */
 	_getCollectionName({ docName }) {
@@ -82,12 +82,12 @@ export class MongoAdapter {
 	/**
 	 * Get all or at least $opts.limit documents that fit the $query.
 	 * @param {object} query
-	 * @param {object} [opts]
-	 * @param {number} [opts.limit]
-	 * @param {boolean} [opts.reverse]
+	 * @param {object} opts
+	 * @param {number} opts.limit
+	 * @param {boolean} opts.reverse
 	 * @returns {Promise<Array<object>>}
 	 */
-	readAsCursor(query, { limit, reverse } = {}) {
+	readAsCursor(query, { limit, reverse }) {
 		let curs = this.db[this._getCollectionName(query)].findAsCursor(query);
 		if (reverse) curs = curs.sort({ clock: -1 });
 		if (limit) curs = curs.limit(limit);
