@@ -5,6 +5,7 @@ import * as decoding from 'lib0/decoding';
 import { Buffer } from 'buffer';
 
 export const PREFERRED_TRIM_SIZE = 400;
+const MAX_DOCUMENT_SIZE = 15000000; // ~15MB (plus space for metadata)
 
 /**
  * Remove all documents from db with Clock between $from and $to
@@ -74,7 +75,7 @@ export const createDocumentMetaKey = (docName, metaKey) => ({
  * @param {object} opts
  * @return {Promise<Array<any>>}
  */
-export const getMongoBulkData = (db, query, opts) => db.readAsCursor(query, opts);
+export const _getMongoBulkData = (db, query, opts) => db.readAsCursor(query, opts);
 
 /**
  * @param {any} db
@@ -91,7 +92,32 @@ export const flushDB = (db) => db.flush();
 const _convertMongoUpdates = (docs) => {
 	if (!Array.isArray(docs) || !docs.length) return [];
 
-	return docs.map((update) => update.value.buffer);
+	const updates = [];
+	for (let i = 0; i < docs.length; i++) {
+		const doc = docs[i];
+		if (!doc.part) {
+			updates.push(doc.value.buffer);
+		} else if (doc.part === 1) {
+			// merge the docs together that got split because of mongodb size limits
+			const parts = [Buffer.from(doc.value.buffer)];
+			let j;
+			let currentPartId = doc.part;
+			for (j = i + 1; j < docs.length; j++) {
+				const part = docs[j];
+				if (part.clock === doc.clock) {
+					if (currentPartId !== part.part - 1) {
+						throw new Error('Couldnt merge updates together because a part is missing!');
+					}
+					parts.push(Buffer.from(part.value.buffer));
+					currentPartId = part.part;
+				} else {
+					break;
+				}
+			}
+			updates.push(Buffer.concat(parts));
+		}
+	}
+	return updates;
 };
 /**
  * Get all document updates for a specific document.
@@ -102,7 +128,7 @@ const _convertMongoUpdates = (docs) => {
  * @return {Promise<Array<Object>>}
  */
 export const getMongoUpdates = async (db, docName, opts = {}) => {
-	const docs = await getMongoBulkData(db, createDocumentUpdateKey(docName), opts);
+	const docs = await _getMongoBulkData(db, createDocumentUpdateKey(docName), opts);
 	return _convertMongoUpdates(docs);
 };
 
@@ -112,7 +138,7 @@ export const getMongoUpdates = async (db, docName, opts = {}) => {
  * @return {Promise<number>} Returns -1 if this document doesn't exist yet
  */
 export const getCurrentUpdateClock = (db, docName) =>
-	getMongoBulkData(
+	_getMongoBulkData(
 		db,
 		{
 			...createDocumentUpdateKey(docName, 0),
@@ -162,9 +188,29 @@ export const storeUpdate = async (db, docName, update) => {
 		await writeStateVector(db, docName, sv, 0);
 	}
 
-	await db.put(createDocumentUpdateKey(docName, clock + 1), {
-		value: Buffer.from(update),
-	});
+	const value = Buffer.from(update);
+	// mongodb has a maximum document size of 16MB;
+	//  if our buffer exceeds it, we store the update in multiple documents
+	if (value.length <= MAX_DOCUMENT_SIZE) {
+		await db.put(createDocumentUpdateKey(docName, clock + 1), {
+			value,
+		});
+	} else {
+		const totalChunks = Math.ceil(value.length / MAX_DOCUMENT_SIZE);
+
+		const putPromises = [];
+		for (let i = 0; i < totalChunks; i++) {
+			const start = i * MAX_DOCUMENT_SIZE;
+			const end = Math.min(start + MAX_DOCUMENT_SIZE, value.length);
+			const chunk = value.subarray(start, end);
+
+			putPromises.push(
+				db.put({ ...createDocumentUpdateKey(docName, clock + 1), part: i + 1 }, { value: chunk }),
+			);
+		}
+
+		await Promise.all(putPromises);
+	}
 
 	return clock + 1;
 };

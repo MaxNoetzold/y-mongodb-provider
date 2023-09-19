@@ -17,7 +17,10 @@ export class MongodbPersistence {
 	 * @param {number} [opts.flushSize=400] The number of stored transactions needed until
 	 * they are merged automatically into one Mongodb document. Default: 400
 	 */
-	constructor(location, { collectionName = 'yjs-writings', multipleCollections = false, flushSize = 400 } = {}) {
+	constructor(
+		location,
+		{ collectionName = 'yjs-writings', multipleCollections = false, flushSize = 400 } = {},
+	) {
 		if (typeof collectionName !== 'string' || !collectionName) {
 			throw new Error(
 				'Constructor option "collectionName" is not a valid string. Either dont use this option (default is "yjs-writings") or use a valid string! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object',
@@ -92,6 +95,7 @@ export class MongodbPersistence {
 			ydoc.transact(() => {
 				for (let i = 0; i < updates.length; i++) {
 					Y.applyUpdate(ydoc, updates[i]);
+					updates[i] = null;
 				}
 			});
 			if (updates.length > this.flushSize) {

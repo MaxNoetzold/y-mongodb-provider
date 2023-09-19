@@ -1,28 +1,32 @@
 # Mongodb database adapter for [Yjs](https://github.com/yjs/yjs)
+
 Persistent Mongodb storage for [y-websocket](https://github.com/yjs/y-websocket) server
 
 ### Notes:
-* This is basically a fork of [y-mongodb](https://github.com/fadiquader/y-mongodb)
-  * which is a fork of the official [y-leveldb](https://github.com/yjs/y-leveldb)
-* This package extends y-mongodb with missing y-leveldb functions, fixes some bugs and adds new options for developers.
-* This package is not officially supported by the Yjs team.
+
+- This is basically a fork of the official [y-leveldb](https://github.com/yjs/y-leveldb) but for MongoDB
+- This package is not officially supported by the Yjs team.
 
 ## Use it
+
+It is available at [npm](https://www.npmjs.com/package/y-mongodb-provider).
+
 ```sh
 npm i y-mongodb-provider
 ```
 
 #### Simple Server Example
+
 ```js
-import http from "http";
-import WebSocket from "ws";
-import * as Y from "yjs";
-import { MongodbPersistence } from "y-mongodb-provider";
-import yUtils from "y-websocket/bin/utils";
+import http from 'http';
+import WebSocket from 'ws';
+import * as Y from 'yjs';
+import { MongodbPersistence } from 'y-mongodb-provider';
+import yUtils from 'y-websocket/bin/utils';
 
 const server = http.createServer((request, response) => {
-    response.writeHead(200, { 'Content-Type': 'text/plain' });
-    response.end('okay');
+	response.writeHead(200, { 'Content-Type': 'text/plain' });
+	response.end('okay');
 });
 
 // y-websocket
@@ -33,8 +37,8 @@ wss.on('connection', yUtils.setupWSConnection);
  * y-mongodb-provider
  *  with all possible options (see API section below)
  */
-const mdb = new MongodbPersistence(createConnectionString("yjstest"), {
-	collectionName: "transactions",
+const mdb = new MongodbPersistence(createConnectionString('yjstest'), {
+	collectionName: 'transactions',
 	flushSize: 100,
 	multipleCollections: true,
 });
@@ -44,34 +48,34 @@ const mdb = new MongodbPersistence(createConnectionString("yjstest"), {
 { bindState: function(string,WSSharedDoc):void, writeState:function(string,WSSharedDoc):Promise }
 */
 yUtils.setPersistence({
-  bindState: async (docName, ydoc) => {
-    // Here you listen to granular document updates and store them in the database
-    // You don't have to do this, but it ensures that you don't lose content when the server crashes
-    // See https://github.com/yjs/yjs#Document-Updates for documentation on how to encode 
-    // document updates
-    
-    // official default code from: https://github.com/yjs/y-websocket/blob/37887badc1f00326855a29fc6b9197745866c3aa/bin/utils.js#L36
-    const persistedYdoc = await mdb.getYDoc(docName);
-    const newUpdates = Y.encodeStateAsUpdate(ydoc);
-    mdb.storeUpdate(docName, newUpdates)
-    Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(persistedYdoc));
-    ydoc.on('update', async update => {
-      mdb.storeUpdate(docName, update);
-    })
-  },
-  writeState: async (docName, ydoc) => {
-    // This is called when all connections to the document are closed.
-    // In the future, this method might also be called in intervals or after a certain number of updates.
-    return new Promise(resolve => {
-      // When the returned Promise resolves, the document will be destroyed.
-      // So make sure that the document really has been written to the database.
-      resolve()
-    })
-  }
-})
+	bindState: async (docName, ydoc) => {
+		// Here you listen to granular document updates and store them in the database
+		// You don't have to do this, but it ensures that you don't lose content when the server crashes
+		// See https://github.com/yjs/yjs#Document-Updates for documentation on how to encode
+		// document updates
+
+		// official default code from: https://github.com/yjs/y-websocket/blob/37887badc1f00326855a29fc6b9197745866c3aa/bin/utils.js#L36
+		const persistedYdoc = await mdb.getYDoc(docName);
+		const newUpdates = Y.encodeStateAsUpdate(ydoc);
+		mdb.storeUpdate(docName, newUpdates);
+		Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(persistedYdoc));
+		ydoc.on('update', async (update) => {
+			mdb.storeUpdate(docName, update);
+		});
+	},
+	writeState: async (docName, ydoc) => {
+		// This is called when all connections to the document are closed.
+		// In the future, this method might also be called in intervals or after a certain number of updates.
+		return new Promise((resolve) => {
+			// When the returned Promise resolves, the document will be destroyed.
+			// So make sure that the document really has been written to the database.
+			resolve();
+		});
+	},
+});
 
 server.listen(port, () => {
-	console.log("listening on port:" + port);
+	console.log('listening on port:' + port);
 });
 ```
 
@@ -82,25 +86,27 @@ server.listen(port, () => {
 Create a y-mongodb-provider persistence instance.
 
 ```js
-import { MongodbPersistence } from "y-mongodb-provider";
+import { MongodbPersistence } from 'y-mongodb-provider';
 
-const persistence = new MongodbPersistence("connectionString", {
+const persistence = new MongodbPersistence('connectionString', {
 	collectionName,
 	flushSize,
 	multipleCollections,
 });
 ```
+
 Options:
-* collectionName
-  * Name of the collection where all documents are stored
-  * Default: `"yjs-writings"`
-* flushSize
-  * The number of transactions needed until they are merged automatically into one document
-  * Default: `400`
-* multipleCollections
-  * When set to true, each document gets an own collection (instead of all documents stored in the same one)
-  * When set to true, the option collectionName gets ignored.
-  * Default: `false`
+
+- collectionName
+  - Name of the collection where all documents are stored
+  - Default: `"yjs-writings"`
+- flushSize
+  - The number of transactions needed until they are merged automatically into one document
+  - Default: `400`
+- multipleCollections
+  - When set to true, each document gets an own collection (instead of all documents stored in the same one)
+  - When set to true, the option collectionName gets ignored.
+  - Default: `false`
 
 #### `persistence.getYDoc(docName: string): Promise<Y.Doc>`
 
@@ -161,6 +167,7 @@ Internally y-mongodb stores incremental updates. You can merge all document
 updates to a single entry. You probably never have to use this.
 
 ## How I use the library.
+
 ```js
 yUtils.setPersistence({
 	bindState: async (docName, ydoc) => {
@@ -190,7 +197,7 @@ yUtils.setPersistence({
 		Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(persistedYdoc));
 
 		// store updates of the document in db
-		ydoc.on("update", async update => {
+		ydoc.on('update', async (update) => {
 			mdb.storeUpdate(docName, update);
 		});
 
