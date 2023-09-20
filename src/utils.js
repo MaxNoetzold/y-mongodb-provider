@@ -28,7 +28,7 @@ export const clearUpdatesRange = async (db, docName, from, to) =>
 /**
  * Create a unique key for a update message.
  * @param {string} docName
- * @param {number} clock must be unique
+ * @param {number} [clock] must be unique
  * @return {Object} [opts.version, opts.docName, opts.action, opts.clock]
  */
 export const createDocumentUpdateKey = (docName, clock) => {
@@ -73,7 +73,7 @@ export const createDocumentMetaKey = (docName, metaKey) => ({
  * @param {any} db
  * @param {object} query
  * @param {object} opts
- * @return {Promise<Array<any>>}
+ * @return {Promise<any[]>}
  */
 export const _getMongoBulkData = (db, query, opts) => db.readAsCursor(query, opts);
 
@@ -86,8 +86,8 @@ export const flushDB = (db) => db.flush();
 /**
  * Convert the mongo document array to an array of values (as buffers)
  *
- * @param {<Array<Object>>} docs
- * @return {<Array<Buffer>>}
+ * @param {any[]} docs
+ * @return {Buffer[]}
  */
 const _convertMongoUpdates = (docs) => {
 	if (!Array.isArray(docs) || !docs.length) return [];
@@ -125,7 +125,7 @@ const _convertMongoUpdates = (docs) => {
  * @param {any} db
  * @param {string} docName
  * @param {any} [opts]
- * @return {Promise<Array<Object>>}
+ * @return {Promise<any[]>}
  */
 export const getMongoUpdates = async (db, docName, opts = {}) => {
 	const docs = await _getMongoBulkData(db, createDocumentUpdateKey(docName), opts);
