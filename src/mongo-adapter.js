@@ -82,12 +82,13 @@ export class MongoAdapter {
 	/**
 	 * Get all or at least $opts.limit documents that fit the $query.
 	 * @param {object} query
-	 * @param {object} opts
-	 * @param {number} opts.limit
-	 * @param {boolean} opts.reverse
+	 * @param {object} [opts]
+	 * @param {number} [opts.limit]
+	 * @param {boolean} [opts.reverse]
 	 * @returns {Promise<Array<object>>}
 	 */
-	readAsCursor(query, { limit, reverse }) {
+	readAsCursor(query, opts = {}) {
+		const { limit = 0, reverse = false } = opts;
 		let curs = this.db[this._getCollectionName(query)].findAsCursor(query);
 		if (reverse) curs = curs.sort({ clock: -1 });
 		if (limit) curs = curs.limit(limit);

@@ -18,7 +18,8 @@ export class MongodbPersistence {
 	 * they are merged automatically into one Mongodb document. Default: 400
 	 */
 	constructor(location, opts = {}) {
-		const { collectionName, multipleCollections, flushSize } = { collectionName: 'yjs-writings', multipleCollections: false, flushSize: 400 , ...opts }
+		const { collectionName = 'yjs-writings', multipleCollections = false, flushSize = 400 } = opts;
+
 		if (typeof collectionName !== 'string' || !collectionName) {
 			throw new Error(
 				'Constructor option "collectionName" is not a valid string. Either dont use this option (default is "yjs-writings") or use a valid string! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object',

@@ -27,10 +27,10 @@ export const clearUpdatesRange = async (db, docName, from, to) =>
 /**
  * Create a unique key for a update message.
  * @param {string} docName
- * @param {number} clock must be unique
+ * @param {number} [clock] must be unique
  * @return {Object} [opts.version, opts.docName, opts.action, opts.clock]
  */
-export const createDocumentUpdateKey = (docName, clock = -1) => {
+export const createDocumentUpdateKey = (docName, clock) => {
 	if (clock !== undefined) {
 		return {
 			version: 'v1',
