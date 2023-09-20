@@ -13,7 +13,7 @@ function parseMongoDBConnectionString(connectionString) {
 export class MongoAdapter {
 	/**
 	 * Create a MongoAdapter instance.
-	 * @param {string} location
+	 * @param {string} connectionString
 	 * @param {object} opts
 	 * @param {string} opts.collection Name of the collection where all documents are stored.
 	 * @param {boolean} opts.multipleCollections When set to true, each document gets an own
@@ -97,7 +97,7 @@ export class MongoAdapter {
 			I dont know yet if this is a problem for me here.
 		*/
 		const bulk = collection.initializeOrderedBulkOp();
-		bulk.find(query).remove();
+		bulk.find(query).delete();
 		return bulk.execute();
 	}
 
@@ -109,15 +109,16 @@ export class MongoAdapter {
 	 * @param {boolean} [opts.reverse]
 	 * @returns {Promise<Array<object>>}
 	 */
-  readAsCursor(query, opts = {}) {
-    const { limit = 0, reverse = false } = opts;
-    
-    const collection = this.db.collection(this._getCollectionName(query));
+	readAsCursor(query, opts = {}) {
+		const { limit = 0, reverse = false } = opts;
 
+		const collection = this.db.collection(this._getCollectionName(query));
+
+		/** @type {{ clock: 1 | -1, part: 1 | -1 }} */
 		const sortQuery = reverse ? { clock: -1, part: 1 } : { clock: 1, part: 1 };
 		const curs = collection.find(query).sort(sortQuery).limit(limit);
-    
-    return curs.toArray();
+
+		return curs.toArray();
 	}
 
 	/**
@@ -129,10 +130,11 @@ export class MongoAdapter {
 
 	/**
 	 * Get all collection names stored on the MongoDB instance.
-	 * @returns {Promise<Array<string>>}
+	 * @returns {Promise<string[]>}
 	 */
-	getCollectionNames() {
-		return this.db.getCollectionNames();
+	async getCollectionNames() {
+		const collectionInfos = await this.db.listCollections().toArray();
+		return collectionInfos.map((c) => c.name);
 	}
 
 	/**
