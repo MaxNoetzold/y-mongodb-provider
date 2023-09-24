@@ -213,6 +213,20 @@ yUtils.setPersistence({
 });
 ```
 
+## Indexes
+
+It is recommended that you create the following [compound index](https://www.mongodb.com/docs/manual/core/indexes/index-types/index-compound/) on your MongoDB instance to improve query performance:
+
+```js
+db['yjs-writings'].createIndex({
+	version: 1,
+	docName: 1,
+	action: 1,
+	clock: 1,
+	part: 1,
+});
+```
+
 ## License
 
 y-mongodb-provider is licensed under the [MIT License](./LICENSE).
