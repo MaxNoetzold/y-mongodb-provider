@@ -63,8 +63,9 @@ export class MongodbPersistence {
 			}
 
 			const currTr = this.tr[docName];
+			let nextTr = null;
 
-			this.tr[docName] = (async () => {
+			nextTr = (async () => {
 				await currTr;
 
 				let res = /** @type {any} */ (null);
@@ -73,8 +74,17 @@ export class MongodbPersistence {
 				} catch (err) {
 					console.warn('Error during saving transaction', err);
 				}
+
+				// once the last transaction for a given docName resolves, remove it from the queue
+				if (this.tr[docName] === nextTr) {
+					delete this.tr[docName];
+				}
+
 				return res;
 			})();
+
+			this.tr[docName] = nextTr
+
 			return this.tr[docName];
 		};
 	}
