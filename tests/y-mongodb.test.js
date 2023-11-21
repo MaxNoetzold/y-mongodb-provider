@@ -1,6 +1,8 @@
 const Y = require('yjs');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const { MongoClient } = require('mongodb');
+// I ignore it here because if you run "npm run test" it first builds the project and then runs the tests.
+// eslint-disable-next-line import/no-unresolved
 const { MongodbPersistence } = require('../dist/y-mongodb.cjs');
 
 describe('meta with single collection', () => {
