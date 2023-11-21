@@ -72,6 +72,7 @@ export class MongodbPersistence {
 				try {
 					res = await f(db);
 				} catch (err) {
+					// eslint-disable-next-line no-console
 					console.warn('Error during saving transaction', err);
 				}
 
