@@ -19,7 +19,7 @@ npm i y-mongodb-provider
 
 ```js
 import http from 'http';
-import WebSocket from 'ws';
+import { WebSocketServer } from "ws";
 import * as Y from 'yjs';
 import { MongodbPersistence } from 'y-mongodb-provider';
 import yUtils from 'y-websocket/bin/utils';
@@ -30,7 +30,7 @@ const server = http.createServer((request, response) => {
 });
 
 // y-websocket
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocketServer({ server });
 wss.on('connection', yUtils.setupWSConnection);
 
 /*
