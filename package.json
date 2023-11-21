@@ -8,7 +8,8 @@
 	"scripts": {
 		"dist": "rollup -c && tsc",
 		"clean": "rm -rf dist",
-		"test": "npm run dist && jest"
+		"test": "npm run dist && jest",
+		"lint": "npx eslint ."
 	},
 	"repository": {
 		"type": "git",
