@@ -1,13 +1,15 @@
 {
 	"name": "y-mongodb-provider",
-	"version": "0.1.7",
+	"version": "0.1.9",
 	"description": "Mongodb database adapter for Yjs",
 	"main": "./dist/y-mongodb.cjs",
 	"module": "./src/y-mongodb.js",
 	"types": "./dist/y-mongodb.d.ts",
 	"scripts": {
 		"dist": "rollup -c && tsc",
-		"clean": "rm -rf dist"
+		"clean": "rm -rf dist",
+		"test": "npm run dist && jest",
+		"lint": "npx eslint ."
 	},
 	"repository": {
 		"type": "git",
@@ -29,10 +31,15 @@
 		"@rollup/plugin-commonjs": "^14.0.0",
 		"@rollup/plugin-json": "^4.1.0",
 		"@rollup/plugin-node-resolve": "^8.4.0",
+		"@types/jest": "^29.5.9",
 		"@types/node": "^20.6.0",
 		"eslint": "^8.31.0",
 		"eslint-config-airbnb-base": "^15.0.0",
+		"eslint-config-prettier": "^9.0.0",
 		"eslint-plugin-import": "^2.26.0",
+		"eslint-plugin-prettier": "^5.0.1",
+		"jest": "^29.7.0",
+		"mongodb-memory-server": "^9.1.1",
 		"rollup": "^2.21.0",
 		"rollup-plugin-node-polyfills": "^0.2.1",
 		"typescript": "^4.9.5",

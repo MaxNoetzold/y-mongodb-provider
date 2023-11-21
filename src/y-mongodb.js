@@ -72,6 +72,7 @@ export class MongodbPersistence {
 				try {
 					res = await f(db);
 				} catch (err) {
+					// eslint-disable-next-line no-console
 					console.warn('Error during saving transaction', err);
 				}
 
@@ -83,7 +84,7 @@ export class MongodbPersistence {
 				return res;
 			})();
 
-			this.tr[docName] = nextTr
+			this.tr[docName] = nextTr;
 
 			return this.tr[docName];
 		};
@@ -292,6 +293,16 @@ export class MongodbPersistence {
 	flushDB() {
 		return this._transact('global', async (db) => {
 			await U.flushDB(db);
+		});
+	}
+
+	/**
+	 * Closes open database connection
+	 * @returns {Promise<void>}
+	 */
+	destroy() {
+		return this._transact('global', async (db) => {
+			await db.close();
 		});
 	}
 }

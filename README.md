@@ -166,6 +166,10 @@ yet flushed. So use with caution.
 Internally y-mongodb stores incremental updates. You can merge all document
 updates to a single entry. You probably never have to use this.
 
+#### `persistence.destroy(): Promise`
+
+Close the database connection for a clean exit.
+
 ## How I use the library.
 
 ```js

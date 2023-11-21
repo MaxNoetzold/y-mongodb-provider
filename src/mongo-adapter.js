@@ -124,8 +124,8 @@ export class MongoAdapter {
 	/**
 	 * Close connection to MongoDB instance.
 	 */
-	close() {
-		this.client.close();
+	async close() {
+		await this.client.close();
 	}
 
 	/**
