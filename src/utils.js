@@ -99,7 +99,7 @@ const _convertMongoUpdates = (docs) => {
 			updates.push(doc.value.buffer);
 		} else if (doc.part === 1) {
 			// merge the docs together that got split because of mongodb size limits
-			const parts = [Buffer.from(doc.value.buffer)];
+			const parts = [doc.value.buffer];
 			let j;
 			let currentPartId = doc.part;
 			for (j = i + 1; j < docs.length; j++) {
@@ -108,13 +108,13 @@ const _convertMongoUpdates = (docs) => {
 					if (currentPartId !== part.part - 1) {
 						throw new Error('Couldnt merge updates together because a part is missing!');
 					}
-					parts.push(Buffer.from(part.value.buffer));
+					parts.push(part.value.buffer);
 					currentPartId = part.part;
 				} else {
 					break;
 				}
 			}
-			updates.push(Buffer.concat(parts));
+			updates.push(...parts);
 		}
 	}
 	return updates;
@@ -168,7 +168,7 @@ export const writeStateVector = async (db, docName, sv, clock) => {
 	encoding.writeVarUint(encoder, clock);
 	encoding.writeVarUint8Array(encoder, sv);
 	await db.put(createDocumentStateVectorKey(docName), {
-		value: Buffer.from(encoding.toUint8Array(encoder)),
+		value: encoding.toUint8Array(encoder),
 	});
 };
 
@@ -188,21 +188,20 @@ export const storeUpdate = async (db, docName, update) => {
 		await writeStateVector(db, docName, sv, 0);
 	}
 
-	const value = Buffer.from(update);
 	// mongodb has a maximum document size of 16MB;
 	//  if our buffer exceeds it, we store the update in multiple documents
-	if (value.length <= MAX_DOCUMENT_SIZE) {
+	if (update.length <= MAX_DOCUMENT_SIZE) {
 		await db.put(createDocumentUpdateKey(docName, clock + 1), {
-			value,
+			value: update,
 		});
 	} else {
-		const totalChunks = Math.ceil(value.length / MAX_DOCUMENT_SIZE);
+		const totalChunks = Math.ceil(update.length / MAX_DOCUMENT_SIZE);
 
 		const putPromises = [];
 		for (let i = 0; i < totalChunks; i++) {
 			const start = i * MAX_DOCUMENT_SIZE;
-			const end = Math.min(start + MAX_DOCUMENT_SIZE, value.length);
-			const chunk = value.subarray(start, end);
+			const end = Math.min(start + MAX_DOCUMENT_SIZE, update.length);
+			const chunk = update.subarray(start, end);
 
 			putPromises.push(
 				db.put({ ...createDocumentUpdateKey(docName, clock + 1), part: i + 1 }, { value: chunk }),
