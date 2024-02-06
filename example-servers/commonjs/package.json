@@ -1,0 +1,22 @@
+{
+  "name": "y-todo-backend-commonjs",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "author": "max.noetzold@gmail.com",
+  "license": "MIT",
+  "main": "./src/server.ts",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon --watch ./src --exec 'npm run start'"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.1",
+    "ws": "^8.16.0",
+    "y-mongodb-provider": "^0.1.8",
+    "y-websocket": "^1.5.3",
+    "yjs": "^13.6.11"
+  }
+}
