@@ -28,7 +28,6 @@ jobs:
           cp -r $GITHUB_WORKSPACE/dist $GITHUB_WORKSPACE/example-servers/esm/node_modules/y-mongodb-provider/
           cp $GITHUB_WORKSPACE/package.json $GITHUB_WORKSPACE/example-servers/esm/node_modules/y-mongodb-provider/
           npm run build
-        working-directory: $GITHUB_WORKSPACE/example-servers/esm
 
       # Afterwards I run it and kill it after 5 seconds to get the console output
       - name: Create and run ESM server
@@ -37,6 +36,7 @@ jobs:
           PORT: 3000
           MONGO_URL: 'mongodb://127.0.0.1:27017/todos' # doesnt really matter for this test since we dont need to connect
         run: |
+          cd example-servers/esm
           npm run start &>> output.txt & SERVER_PID=$!
           sleep 5
           kill $SERVER_PID
@@ -45,6 +45,7 @@ jobs:
       # We currently only check if the console output contains the "Yjs was already imported" error message
       - name: Check console output
         run: |
+          cd example-servers/esm
           CONSOLE_OUTPUT=$(cat output.txt)
           echo "$CONSOLE_OUTPUT"
           if echo "$CONSOLE_OUTPUT" | grep -q "Yjs was already imported"; then
