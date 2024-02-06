@@ -1,8 +1,8 @@
 import * as Y from 'yjs';
 import * as binary from 'lib0/binary';
 import * as promise from 'lib0/promise';
-import { MongoAdapter } from './mongo-adapter';
-import * as U from './utils';
+import { MongoAdapter } from './mongo-adapter.js';
+import * as U from './utils.js';
 
 export class MongodbPersistence {
 	/**

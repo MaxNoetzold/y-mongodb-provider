@@ -2,14 +2,24 @@
 	"name": "y-mongodb-provider",
 	"version": "0.1.9",
 	"description": "Mongodb database adapter for Yjs",
+	"type": "module",
 	"main": "./dist/y-mongodb.cjs",
 	"module": "./src/y-mongodb.js",
 	"types": "./dist/y-mongodb.d.ts",
+	"exports": {
+		".": {
+			"module": "./src/y-mongodb.js",
+			"import": "./src/y-mongodb.js",
+			"require": "./dist/y-mongodb.cjs",
+			"types": "./dist/y-mongodb.d.ts"
+		}
+	},
 	"scripts": {
 		"dist": "rollup -c && tsc",
 		"clean": "rm -rf dist",
 		"test": "npm run dist && jest",
-		"lint": "npx eslint ."
+		"lint": "npx eslint .",
+		"build": "npm run dist"
 	},
 	"repository": {
 		"type": "git",

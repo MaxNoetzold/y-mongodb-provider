@@ -17,9 +17,11 @@ npm i y-mongodb-provider
 
 #### Simple Server Example
 
+There are full working server examples in the `example-servers` directory.
+
 ```js
 import http from 'http';
-import { WebSocketServer } from "ws";
+import { WebSocketServer } from 'ws';
 import * as Y from 'yjs';
 import { MongodbPersistence } from 'y-mongodb-provider';
 import yUtils from 'y-websocket/bin/utils';

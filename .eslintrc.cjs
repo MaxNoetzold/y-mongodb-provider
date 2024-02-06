@@ -20,5 +20,6 @@ module.exports = {
 		'no-else-return': 'off', // sometimes, its just easier to read
 		'no-plusplus': ['error', { allowForLoopAfterthoughts: true }],
 		'implicit-arrow-linebreak': 'off',
+		'import/extensions': ['error', 'ignorePackages'],
 	},
 };
