@@ -1,29 +1,29 @@
 {
-  "name": "y-todo-backend-rollup",
-  "version": "1.0.0",
-  "author": "max.noetzold@gmail.com",
-  "license": "MIT",
-  "main": "./src/server.ts",
-  "scripts": {
-    "build": "rollup -c",
-    "start": "node dist/server.js",
-    "dev": "nodemon --watch ./src -e ts --exec 'npm run build && npm run start'"
-  },
-  "devDependencies": {
-    "@rollup/plugin-typescript": "^11.1.6",
-    "@types/lodash": "^4.14.202",
-    "@types/node": "^20.11.16",
-    "@types/ws": "^8.5.10",
-    "nodemon": "^3.0.3",
-    "rollup": "^4.9.6",
-    "tslib": "^2.6.2",
-    "typescript": "^5.3.3"
-  },
-  "dependencies": {
-    "dotenv": "^16.4.1",
-    "ws": "^8.16.0",
-    "y-mongodb-provider": "^0.1.8",
-    "y-websocket": "^1.5.3",
-    "yjs": "^13.6.11"
-  }
+	"name": "y-todo-backend-rollup",
+	"version": "1.0.0",
+	"author": "max.noetzold@gmail.com",
+	"license": "MIT",
+	"main": "./src/server.ts",
+	"scripts": {
+		"build": "rollup -c",
+		"start": "node dist/server.js",
+		"dev": "nodemon --watch ./src -e ts --exec 'npm run build && npm run start'"
+	},
+	"devDependencies": {
+		"@rollup/plugin-typescript": "^11.1.6",
+		"@types/lodash": "^4.14.202",
+		"@types/node": "^20.11.16",
+		"@types/ws": "^8.5.10",
+		"nodemon": "^3.0.3",
+		"rollup": "^4.9.6",
+		"tslib": "^2.6.2",
+		"typescript": "^5.3.3"
+	},
+	"dependencies": {
+		"dotenv": "^16.4.1",
+		"ws": "^8.16.0",
+		"y-mongodb-provider": "^0.1.8",
+		"y-websocket": "^1.5.3",
+		"yjs": "^13.6.11"
+	}
 }
