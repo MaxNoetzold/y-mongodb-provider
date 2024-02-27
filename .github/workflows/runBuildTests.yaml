@@ -9,10 +9,11 @@ jobs:
   esm:
     runs-on: ubuntu-latest
 
-    # I want the test to run on all node versions to see if a problem is caused by a specific node version
-    fail-fast: false
-    matrix:
-      node-version: ['16.x', '18.x', '20.x']
+    strategy:
+      # I want the test to run on all node versions to see if a problem is caused by a specific node version
+      fail-fast: false
+      matrix:
+        node-version: ['16.x', '18.x', '20.x']
 
     steps:
       - uses: actions/checkout@v4
