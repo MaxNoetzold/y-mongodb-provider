@@ -12,16 +12,16 @@
 	},
 	"devDependencies": {
 		"@types/lodash": "^4.14.202",
-		"@types/node": "^20.11.16",
+		"@types/node": "^20.11.20",
 		"@types/ws": "^8.5.10",
-		"nodemon": "^3.0.3",
+		"nodemon": "^3.1.0",
 		"typescript": "^5.3.3"
 	},
 	"dependencies": {
-		"dotenv": "^16.4.1",
+		"dotenv": "^16.4.5",
 		"ws": "^8.16.0",
-		"y-mongodb-provider": "^0.1.8",
-		"y-websocket": "^1.5.3",
-		"yjs": "^13.6.11"
+		"y-mongodb-provider": "^0.1.9",
+		"y-websocket": "^1.5.4",
+		"yjs": "^13.6.12"
 	}
 }
