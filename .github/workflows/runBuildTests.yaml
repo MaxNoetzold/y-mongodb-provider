@@ -9,6 +9,8 @@ jobs:
   esm:
     runs-on: ubuntu-latest
 
+    timeout-minutes: 10
+
     strategy:
       # I want the test to run on all node versions to see if a problem is caused by a specific node version
       fail-fast: false
@@ -69,6 +71,8 @@ jobs:
   commonjs:
     runs-on: ubuntu-latest
 
+    timeout-minutes: 10
+
     strategy:
       # I want the test to run on all node versions to see if a problem is caused by a specific node version
       fail-fast: false
@@ -127,6 +131,8 @@ jobs:
   # check the rollup build
   rollup:
     runs-on: ubuntu-latest
+
+    timeout-minutes: 10
 
     strategy:
       # I want the test to run on all node versions to see if a problem is caused by a specific node version

@@ -11,6 +11,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    timeout-minutes: 5
+
     strategy:
       # I want the test to run on all node versions to see if a problem is caused by a specific node version
       fail-fast: false
