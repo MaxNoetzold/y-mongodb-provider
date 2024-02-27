@@ -1,10 +1,10 @@
 # Mongodb database adapter for [Yjs](https://github.com/yjs/yjs)
 
-Persistent Mongodb storage for [y-websocket](https://github.com/yjs/y-websocket) server
+Persistent MongoDB storage for [y-websocket](https://github.com/yjs/y-websocket) server. You can use this adapter to easily store and retrieve Yjs documents in/from MongoDB.
 
 ### Notes:
 
-- This is basically a fork of the official [y-leveldb](https://github.com/yjs/y-leveldb) but for MongoDB
+- This was once a fork of the official [y-leveldb](https://github.com/yjs/y-leveldb) but for MongoDB
 - This package is not officially supported by the Yjs team.
 
 ## Use it (Installation)
