@@ -1,13 +1,15 @@
 # Mongodb database adapter for [Yjs](https://github.com/yjs/yjs)
 
-Persistent Mongodb storage for [y-websocket](https://github.com/yjs/y-websocket) server
+Persistent MongoDB storage for [y-websocket](https://github.com/yjs/y-websocket) server. You can use this adapter to easily store and retrieve Yjs documents in/from MongoDB.
 
 ### Notes:
 
-- This is basically a fork of the official [y-leveldb](https://github.com/yjs/y-leveldb) but for MongoDB
+- This was once a fork of the official [y-leveldb](https://github.com/yjs/y-leveldb) but for MongoDB
 - This package is not officially supported by the Yjs team.
 
-## Use it
+## Use it (Installation)
+
+You need Node version 16 or newer.
 
 It is available at [npm](https://www.npmjs.com/package/y-mongodb-provider).
 
@@ -109,6 +111,7 @@ Options:
   - When set to true, each document gets an own collection (instead of all documents stored in the same one)
   - When set to true, the option collectionName gets ignored.
   - Default: `false`
+  - **Note**: When you dont set this setting to true, you should [create an index for your MongoDB collection](https://github.com/MaxNoetzold/y-mongodb-provider?tab=readme-ov-file#indexes).
 
 #### `persistence.getYDoc(docName: string): Promise<Y.Doc>`
 
@@ -172,7 +175,21 @@ updates to a single entry. You probably never have to use this.
 
 Close the database connection for a clean exit.
 
-## How I use the library.
+## Indexes
+
+It is recommended that you create the following [compound index](https://www.mongodb.com/docs/manual/core/indexes/index-types/index-compound/) on your MongoDB collection to improve query performance:
+
+```js
+db['yjs-writings'].createIndex({
+	version: 1,
+	docName: 1,
+	action: 1,
+	clock: 1,
+	part: 1,
+});
+```
+
+## An other example
 
 ```js
 yUtils.setPersistence({
@@ -219,18 +236,21 @@ yUtils.setPersistence({
 });
 ```
 
-## Indexes
+## Contributing
 
-It is recommended that you create the following [compound index](https://www.mongodb.com/docs/manual/core/indexes/index-types/index-compound/) on your MongoDB instance to improve query performance:
+We welcome contributions! Please follow these steps to contribute:
 
-```js
-db['yjs-writings'].createIndex({
-	version: 1,
-	docName: 1,
-	action: 1,
-	clock: 1,
-	part: 1,
-});
+1. Fork the repository.
+2. Set up your development environment: `npm install`.
+3. Make your changes and ensure tests pass: `npm test`.
+4. Submit a pull request with your changes.
+
+## Testing
+
+To run the test suite, use the following command:
+
+```sh
+npm test
 ```
 
 ## License

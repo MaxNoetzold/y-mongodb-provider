@@ -10,13 +10,13 @@
 		"dev": "nodemon --watch ./src --exec 'npm run start'"
 	},
 	"devDependencies": {
-		"nodemon": "^3.0.3"
+		"nodemon": "^3.1.0"
 	},
 	"dependencies": {
-		"dotenv": "^16.4.1",
+		"dotenv": "^16.4.5",
 		"ws": "^8.16.0",
-		"y-mongodb-provider": "^0.1.8",
-		"y-websocket": "^1.5.3",
-		"yjs": "^13.6.11"
+		"y-mongodb-provider": "^0.1.9",
+		"y-websocket": "^1.5.4",
+		"yjs": "^13.6.12"
 	}
 }

@@ -9,13 +9,21 @@ jobs:
   esm:
     runs-on: ubuntu-latest
 
+    timeout-minutes: 10
+
+    strategy:
+      # I want the test to run on all node versions to see if a problem is caused by a specific node version
+      fail-fast: false
+      matrix:
+        node-version: ['16.x', '18.x', '20.x']
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
 
       - name: Build y-mongodb-provider
         run: |
@@ -63,13 +71,21 @@ jobs:
   commonjs:
     runs-on: ubuntu-latest
 
+    timeout-minutes: 10
+
+    strategy:
+      # I want the test to run on all node versions to see if a problem is caused by a specific node version
+      fail-fast: false
+      matrix:
+        node-version: ['16.x', '18.x', '20.x']
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
 
       - name: Build y-mongodb-provider
         run: |
@@ -116,13 +132,21 @@ jobs:
   rollup:
     runs-on: ubuntu-latest
 
+    timeout-minutes: 10
+
+    strategy:
+      # I want the test to run on all node versions to see if a problem is caused by a specific node version
+      fail-fast: false
+      matrix:
+        node-version: ['16.x', '18.x', '20.x']
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
 
       - name: Build y-mongodb-provider
         run: |

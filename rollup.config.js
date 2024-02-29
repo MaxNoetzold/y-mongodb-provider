@@ -51,6 +51,6 @@ export default [
 				return path;
 			},
 		},
-		external: (id) => /^(lib0|yjs|mongodb)/.test(id),
+		external: (id) => /^(lib0|yjs|mongodb|buffer)/.test(id),
 	},
 ];
