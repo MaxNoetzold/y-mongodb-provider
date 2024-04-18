@@ -114,7 +114,7 @@ const _convertMongoUpdates = (docs) => {
 					break;
 				}
 			}
-			updates.push(...parts);
+			updates.push(Buffer.concat(parts));
 		}
 	}
 	return updates;
