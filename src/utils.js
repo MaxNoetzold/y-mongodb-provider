@@ -119,6 +119,8 @@ const _convertMongoUpdates = (docs) => {
 				}
 			}
 			updates.push(Buffer.concat(parts));
+			// set i to j - 1 because we already processed all parts
+			i = j - 1;
 		}
 	}
 	return updates;
