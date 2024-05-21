@@ -11,17 +11,17 @@
 		"dev": "nodemon --watch ./src -e ts --exec 'npm run build && npm run start'"
 	},
 	"devDependencies": {
-		"@types/lodash": "^4.14.202",
-		"@types/node": "^20.11.20",
+		"@types/lodash": "^4.17.4",
+		"@types/node": "^20.12.12",
 		"@types/ws": "^8.5.10",
 		"nodemon": "^3.1.0",
-		"typescript": "^5.3.3"
+		"typescript": "^5.4.5"
 	},
 	"dependencies": {
 		"dotenv": "^16.4.5",
-		"ws": "^8.16.0",
-		"y-mongodb-provider": "^0.1.9",
-		"y-websocket": "^1.5.4",
-		"yjs": "^13.6.12"
+		"ws": "^8.17.0",
+		"y-mongodb-provider": "^0.1.10",
+		"y-websocket": "^2.0.3",
+		"yjs": "^13.6.15"
 	}
 }

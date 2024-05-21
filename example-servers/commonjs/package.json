@@ -14,9 +14,9 @@
 	},
 	"dependencies": {
 		"dotenv": "^16.4.5",
-		"ws": "^8.16.0",
-		"y-mongodb-provider": "^0.1.9",
-		"y-websocket": "^1.5.4",
-		"yjs": "^13.6.12"
+		"ws": "^8.17.0",
+		"y-mongodb-provider": "^0.1.10",
+		"y-websocket": "^2.0.3",
+		"yjs": "^13.6.15"
 	}
 }
