@@ -254,7 +254,7 @@ export class MongodbPersistence {
 
 	/**
 	 * Retrieve the state vectors of all stored documents.
-	 * You can use this to sync two y-leveldb instances.
+	 * You can use this to sync two y-mongodb instances.
 	 * !Note: The state vectors might be outdated if the associated document
 	 * is not yet flushed. So use with caution.
 	 * @return {Promise<{ name: string, sv: Uint8Array, clock: number }[]>}

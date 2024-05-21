@@ -31,12 +31,14 @@ const messageSync = 0;
 const messageAwareness = 1;
 // const messageAuth = 2
 
-const updateHandler = (update: Uint8Array, origin: any, doc: IWSSharedDoc) => {
+const updateHandler = (update: Uint8Array, origin: any, doc: Y.Doc) => {
+	const sharedDoc = doc as IWSSharedDoc;
+
 	const encoder = encoding.createEncoder();
 	encoding.writeVarUint(encoder, messageSync);
 	syncProtocol.writeUpdate(encoder, update);
 	const message = encoding.toUint8Array(encoder);
-	doc.conns.forEach((_, conn) => send(doc, conn, message));
+	sharedDoc.conns.forEach((_, conn) => send(sharedDoc, conn, message));
 };
 
 class WSSharedDoc extends Y.Doc implements IWSSharedDoc {
@@ -138,7 +140,6 @@ const messageListener = (conn: any, doc: IWSSharedDoc, message: Uint8Array) => {
 		}
 	} catch (err) {
 		console.error(err);
-		doc.emit('error', [err]);
 	}
 };
 
