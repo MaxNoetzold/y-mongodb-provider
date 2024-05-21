@@ -84,7 +84,11 @@ export const _getMongoBulkData = (db, query, opts) => db.readAsCursor(query, opt
 export const flushDB = (db) => db.flush();
 
 /**
- * Convert the mongo document array to an array of values (as buffers)
+ *
+ * This function converts MongoDB updates to a buffer that can be processed by the application.
+ * It handles both complete documents and large documents that have been split into smaller 'parts' due to MongoDB's size limit.
+ * For split documents, it collects all the parts and merges them together.
+ * It assumes that the parts of a split document are ordered and located exactly after the document with part number 1.
  *
  * @param {any[]} docs
  * @return {Buffer[]}
@@ -114,11 +118,14 @@ const _convertMongoUpdates = (docs) => {
 					break;
 				}
 			}
-			updates.push(...parts);
+			updates.push(Buffer.concat(parts));
+			// set i to j - 1 because we already processed all parts
+			i = j - 1;
 		}
 	}
 	return updates;
 };
+
 /**
  * Get all document updates for a specific document.
  *

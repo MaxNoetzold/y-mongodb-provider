@@ -4,6 +4,7 @@ const { MongoClient } = require('mongodb');
 // I ignore it here because if you run "npm run test" it first builds the project and then runs the tests.
 // eslint-disable-next-line import/no-unresolved
 const { MongodbPersistence } = require('../dist/y-mongodb.cjs');
+const generateLargeText = require('./generateLargeText.js');
 
 describe('meta with single collection', () => {
 	let mongoServer;
@@ -262,6 +263,60 @@ describe('store multiple documents in single collection', () => {
 
 	it('should clear document two', async () => {
 		await mongodbPersistence.clearDocument(docNameTwo);
+
+		const db = mongoConnection.db(mongoServer.instanceInfo.dbName);
+		const collection = db.collection(collectionName);
+		const count = await collection.countDocuments();
+		expect(count).toEqual(0);
+	});
+});
+
+describe('store 40mb of data in single collection', () => {
+	let mongoServer;
+	let mongodbPersistence;
+	let mongoConnection;
+	const collectionName = 'testCollection';
+	const docNameOne = 'docOne';
+	const content = generateLargeText(40);
+
+	beforeAll(async () => {
+		mongoServer = await MongoMemoryServer.create();
+		mongodbPersistence = new MongodbPersistence(mongoServer.getUri(), { collectionName });
+		mongoConnection = await MongoClient.connect(mongoServer.getUri(), {});
+	});
+
+	afterAll(async () => {
+		if (mongodbPersistence) {
+			await mongodbPersistence.destroy();
+		}
+		if (mongoConnection) {
+			await mongoConnection.close();
+		}
+		if (mongoServer) {
+			await mongoServer.stop();
+		}
+	});
+
+	it('should store 40mb of text in three documents', async () => {
+		await storeDocWithText(mongodbPersistence, docNameOne, content);
+
+		const db = mongoConnection.db(mongoServer.instanceInfo.dbName);
+		const collection = db.collection(collectionName);
+		const count = await collection.countDocuments();
+		expect(count).toEqual(3);
+	});
+
+	it("should retrieve the text of the stored document's updates", async () => {
+		const persistedYdoc = await mongodbPersistence.getYDoc(docNameOne);
+
+		const yText = persistedYdoc.getText('name');
+		const yTextContent = yText.toString();
+
+		expect(yTextContent.length).toEqual(content.length);
+	});
+
+	it("should clear the document's updates", async () => {
+		await mongodbPersistence.clearDocument(docNameOne);
 
 		const db = mongoConnection.db(mongoServer.instanceInfo.dbName);
 		const collection = db.collection(collectionName);
