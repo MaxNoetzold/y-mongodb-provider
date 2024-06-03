@@ -128,7 +128,6 @@ export class MongoAdapter {
 		return bulk.execute();
 	}
 
-	// TODO: Actually read as cursor and not as array
 	/**
 	 * Get all or at least $opts.limit documents that fit the $query.
 	 * @param {object} query
@@ -147,7 +146,7 @@ export class MongoAdapter {
 			: { clock: 1, part: 1 };
 		const curs = collection.find(query).sort(sortQuery).limit(limit);
 
-		return curs.toArray() as Promise<DocumentUpdate[]>;
+		return curs;
 	}
 
 	/**

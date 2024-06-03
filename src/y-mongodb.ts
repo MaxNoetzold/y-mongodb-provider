@@ -11,8 +11,7 @@ import {
 	flushDocument,
 	getAllSVDocs,
 	getCurrentUpdateClock,
-	getMongoUpdates,
-	mergeUpdates,
+	getYDocFromDb,
 	readStateVector,
 	storeUpdate,
 } from './utils';
@@ -44,6 +43,7 @@ interface MongodbPersistenceOptions {
 export class MongodbPersistence {
 	private flushSize: number;
 	private multipleCollections: boolean;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private tr: { [docName: string]: Promise<any> };
 	private _transact: <T>(docName: string, f: (db: MongoAdapter) => Promise<T>) => Promise<T>;
 
@@ -136,19 +136,7 @@ export class MongodbPersistence {
 	 * @return {Promise<Y.Doc>}
 	 */
 	getYDoc(docName: string) {
-		return this._transact(docName, async (db) => {
-			const updates = await getMongoUpdates(db, docName);
-			const ydoc = new Y.Doc();
-			ydoc.transact(() => {
-				for (let i = 0; i < updates.length; i++) {
-					Y.applyUpdate(ydoc, updates[i]);
-				}
-			});
-			if (updates.length > this.flushSize) {
-				await flushDocument(db, docName, Y.encodeStateAsUpdate(ydoc), Y.encodeStateVector(ydoc));
-			}
-			return ydoc;
-		});
+		return this._transact(docName, async (db) => getYDocFromDb(db, docName, this.flushSize));
 	}
 
 	/**
@@ -181,9 +169,9 @@ export class MongodbPersistence {
 				return sv;
 			} else {
 				// current state vector is outdated
-				const updates = await getMongoUpdates(db, docName);
-				const { update, sv: newSv } = mergeUpdates(updates);
-				await flushDocument(db, docName, update, newSv);
+				const ydoc = await getYDocFromDb(db, docName, this.flushSize);
+				const newSv = Y.encodeStateVector(ydoc);
+				await flushDocument(db, docName, Y.encodeStateAsUpdate(ydoc), newSv);
 				return newSv;
 			}
 		});
@@ -227,6 +215,7 @@ export class MongodbPersistence {
 	 * @param {any} value
 	 * @return {Promise<void>}
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	setMeta(docName: string, metaKey: string, value: any) {
 		/*	Unlike y-leveldb, we simply store the value here without encoding
 	 		 it in a buffer beforehand. */
@@ -313,13 +302,15 @@ export class MongodbPersistence {
 	 * It is done automatically every $options.flushsize (default 400) transactions.
 	 *
 	 * @param {string} docName
-	 * @return {Promise<void>}
+	 * @return {Promise<Uint8Array>} returns new state vector
 	 */
 	flushDocument(docName: string) {
 		return this._transact(docName, async (db) => {
-			const updates = await getMongoUpdates(db, docName);
-			const { update, sv } = mergeUpdates(updates);
-			await flushDocument(db, docName, update, sv);
+			// current state vector is outdated
+			const ydoc = await getYDocFromDb(db, docName, this.flushSize);
+			const newSv = Y.encodeStateVector(ydoc);
+			await flushDocument(db, docName, Y.encodeStateAsUpdate(ydoc), newSv);
+			return newSv;
 		});
 	}
 

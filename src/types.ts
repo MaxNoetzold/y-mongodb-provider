@@ -1,4 +1,4 @@
-import { ObjectId } from 'mongodb';
+import { Binary, ObjectId } from 'mongodb';
 
 export interface DocumentUpdateKey {
 	version?: string;
@@ -13,6 +13,7 @@ export interface DocumentUpdateKey {
 }
 
 export interface Query extends DocumentUpdateKey {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	[key: string]: any;
 }
 
@@ -22,6 +23,6 @@ export interface DocumentUpdate {
 	version: string;
 	docName: string;
 	clock: number;
-	value: Uint8Array;
+	value: Binary;
 	part?: number;
 }

@@ -4,7 +4,7 @@ import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import { Buffer } from 'buffer';
 import { MongoAdapter } from './mongo-adapter';
-import { DocumentUpdate, DocumentUpdateKey, Query } from './types';
+import { DocumentUpdate, DocumentUpdateKey } from './types';
 
 export const PREFERRED_TRIM_SIZE = 400;
 const MAX_DOCUMENT_SIZE = 15000000; // ~15MB (plus space for metadata)
@@ -77,87 +77,18 @@ export const createDocumentMetaKey = (docName: string, metaKey: string) => ({
 });
 
 /**
- * @param {MongoAdapter} db
- * @param {Query} query
- * @param {object} opts
- * @return {Promise<DocumentUpdate[]>}
- */
-const _getMongoBulkData = (db: MongoAdapter, query: Query, opts: object) =>
-	db.readAsCursor(query, opts);
-
-/**
  * @param {any} db
  * @return {Promise<any>}
  */
 export const flushDB = (db: MongoAdapter) => db.flush();
 
 /**
- *
- * This function converts MongoDB updates to a buffer that can be processed by the application.
- * It handles both complete documents and large documents that have been split into smaller 'parts' due to MongoDB's size limit.
- * For split documents, it collects all the parts and merges them together.
- * It assumes that the parts of a split document are ordered and located exactly after the document with part number 1.
- *
- * @param {DocumentUpdate[]} docs
- * @return {Buffer[]}
- */
-const _convertMongoUpdates = (docs: DocumentUpdate[]) => {
-	if (!Array.isArray(docs) || !docs.length) return [];
-
-	const updates: Uint8Array[] = [];
-	for (let i = 0; i < docs.length; i++) {
-		const doc = docs[i];
-		if (!doc.part) {
-			/*
-                Note: The code works fine without the new Unit8Array() wrapper,
-                but it is added to make the code more consistent.
-            */
-			updates.push(new Uint8Array(doc.value.buffer));
-		} else if (doc.part === 1) {
-			// merge the docs together that got split because of mongodb size limits
-			const parts: Uint8Array[] = [new Uint8Array(doc.value.buffer)];
-			let j;
-			let currentPartId = doc.part;
-			for (j = i + 1; j < docs.length; j++) {
-				const part = docs[j];
-				if (part.clock === doc.clock) {
-					if (!part.part || currentPartId !== part.part - 1) {
-						throw new Error('Couldnt merge updates together because a part is missing!');
-					}
-					parts.push(new Uint8Array(part.value.buffer));
-					currentPartId = part.part;
-				} else {
-					break;
-				}
-			}
-			updates.push(Buffer.concat(parts));
-			// set i to j - 1 because we already processed all parts
-			i = j - 1;
-		}
-	}
-	return updates;
-};
-
-/**
- * Get all document updates for a specific document.
- *
- * @param {any} db
- * @param {string} docName
- * @param {any} [opts]
- */
-export const getMongoUpdates = async (db: MongoAdapter, docName: string, opts = {}) => {
-	const docs = await _getMongoBulkData(db, createDocumentUpdateKey(docName), opts);
-	return _convertMongoUpdates(docs);
-};
-
-/**
  * @param {any} db
  * @param {string} docName
  * @return {Promise<number>} Returns -1 if this document doesn't exist yet
  */
-export const getCurrentUpdateClock = (db: MongoAdapter, docName: string) =>
-	_getMongoBulkData(
-		db,
+export const getCurrentUpdateClock = async (db: MongoAdapter, docName: string) => {
+	const cursor = db.readAsCursor(
 		{
 			...createDocumentUpdateKey(docName, 0),
 			clock: {
@@ -166,13 +97,10 @@ export const getCurrentUpdateClock = (db: MongoAdapter, docName: string) =>
 			},
 		},
 		{ reverse: true, limit: 1 },
-	).then((updates) => {
-		if (updates.length === 0) {
-			return -1;
-		} else {
-			return updates[0].clock;
-		}
-	});
+	);
+	const update = await cursor.next();
+	return update ? update.clock : -1;
+};
 
 /**
  * @param {any} db
@@ -238,23 +166,6 @@ export const storeUpdate = async (db: MongoAdapter, docName: string, update: Uin
 };
 
 /**
- * For now this is a helper method that creates a Y.Doc and then re-encodes a document update.
- * In the future this will be handled by Yjs without creating a Y.Doc (constant memory consumption).
- *
- * @param {Uint8Array[]} updates
- * @return {{update:Uint8Array, sv: Uint8Array}}
- */
-export const mergeUpdates = (updates: Uint8Array[]) => {
-	const ydoc = new Y.Doc();
-	ydoc.transact(() => {
-		for (let i = 0; i < updates.length; i++) {
-			Y.applyUpdate(ydoc, updates[i]);
-		}
-	});
-	return { update: Y.encodeStateAsUpdate(ydoc), sv: Y.encodeStateVector(ydoc) };
-};
-
-/**
  * @param {Uint8Array} buf
  * @return {{ sv: Uint8Array, clock: number }}
  */
@@ -285,7 +196,8 @@ export const readStateVector = async (db: MongoAdapter, docName: string) => {
 	return decodeMongodbStateVector(doc.value);
 };
 
-export const getAllSVDocs = async (db: MongoAdapter) => db.readAsCursor({ version: 'v1_sv' });
+export const getAllSVDocs = async (db: MongoAdapter) =>
+	db.readAsCursor({ version: 'v1_sv' }).toArray() as Promise<DocumentUpdate[]>;
 
 /**
  * Merge all MongoDB documents of the same yjs document together.
@@ -305,4 +217,49 @@ export const flushDocument = async (
 	await writeStateVector(db, docName, stateVector, clock);
 	await clearUpdatesRange(db, docName, 0, clock);
 	return clock;
+};
+
+export const getYDocFromDb = async (db: MongoAdapter, docName: string, flushSize: number) => {
+	const ydoc = new Y.Doc();
+	let updatesCount = 0;
+
+	const cursor = await db.readAsCursor(createDocumentUpdateKey(docName));
+
+	// loop through all updates and apply them to the Yjs document
+	let currentUpdate: DocumentUpdate | null = (await cursor.next()) as DocumentUpdate | null;
+	let parts: DocumentUpdate[] = [];
+	while (currentUpdate) {
+		// if we have parts stored in the array
+		// and the current update has a different clock (aka its a new update),
+		// we need to apply the parts
+		if (parts.length && parts[0].clock !== currentUpdate.clock) {
+			Y.applyUpdate(ydoc, Buffer.concat(parts.map((part) => part.value.buffer)));
+			parts = [];
+		}
+
+		// if the current update is a part (and in order), we store it in the array
+		// NOTE: we expect the parts to be in order, but we check it here just in case
+		if (
+			(parts.length === 0 && currentUpdate.part === 1) ||
+			(parts.length > 0 && currentUpdate.part === (parts[parts.length - 1].part as number) + 1)
+		) {
+			parts.push(currentUpdate);
+		} else {
+			Y.applyUpdate(ydoc, currentUpdate.value.buffer);
+		}
+
+		updatesCount += 1;
+		// eslint-disable-next-line no-await-in-loop
+		currentUpdate = (await cursor.next()) as DocumentUpdate | null;
+	}
+	// when the last update is a part, we need to apply it
+	if (parts.length) {
+		Y.applyUpdate(ydoc, Buffer.concat(parts.map((part) => part.value.buffer)));
+	}
+
+	if (updatesCount > flushSize) {
+		await flushDocument(db, docName, Y.encodeStateAsUpdate(ydoc), Y.encodeStateVector(ydoc));
+	}
+
+	return ydoc;
 };
