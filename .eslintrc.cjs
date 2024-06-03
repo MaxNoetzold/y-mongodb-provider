@@ -3,8 +3,14 @@ module.exports = {
 		es2021: true,
 		jest: true,
 	},
-	extends: ['airbnb-base', 'plugin:prettier/recommended'],
-	plugins: ['prettier'],
+	extends: [
+		'airbnb-base',
+		'plugin:prettier/recommended',
+		'plugin:@typescript-eslint/recommended',
+		'plugin:import/typescript',
+	],
+	parser: '@typescript-eslint/parser',
+	plugins: ['prettier', '@typescript-eslint'],
 	overrides: [],
 	parserOptions: {
 		ecmaVersion: 'latest',
@@ -12,14 +18,14 @@ module.exports = {
 	},
 	rules: {
 		'prettier/prettier': 'error',
-		// 'linebreak-style': ['warn', 'windows'],
 		'no-tabs': 'off',
 		indent: ['warn', 'tab'],
-		'no-underscore-dangle': 'off', // easier to see if a function is intended as private function
-		'import/prefer-default-export': 'off', // I like it more this way
-		'no-else-return': 'off', // sometimes, its just easier to read
+		'no-underscore-dangle': 'off',
+		'import/prefer-default-export': 'off',
+		'no-else-return': 'off',
 		'no-plusplus': ['error', { allowForLoopAfterthoughts: true }],
 		'implicit-arrow-linebreak': 'off',
-		'import/extensions': ['error', 'ignorePackages'],
+		'import/extensions': 'off',
+		'lines-between-class-members': ['error', 'always', { exceptAfterSingleLine: true }],
 	},
 };

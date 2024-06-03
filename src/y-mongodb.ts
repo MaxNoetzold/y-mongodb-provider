@@ -1,23 +1,58 @@
 import * as Y from 'yjs';
 import * as binary from 'lib0/binary';
-import * as promise from 'lib0/promise';
-import { MongoAdapter } from './mongo-adapter.js';
-import * as U from './utils.js';
+import { MongoAdapter } from './mongo-adapter';
+import {
+	PREFERRED_TRIM_SIZE,
+	clearUpdatesRange,
+	createDocumentMetaKey,
+	createDocumentStateVectorKey,
+	decodeMongodbStateVector,
+	flushDB,
+	flushDocument,
+	getAllSVDocs,
+	getCurrentUpdateClock,
+	getMongoUpdates,
+	mergeUpdates,
+	readStateVector,
+	storeUpdate,
+} from './utils';
+
+interface MongodbPersistenceOptions {
+	/**
+	 * Name of the collection where all documents are stored.
+	 *
+	 * Default: "yjs-writings"
+	 */
+	collectionName?: string;
+	/**
+	 * When set to true, each document gets an own collection
+	 * (instead of all documents stored in the same one).
+	 * In this case, the option collectionName gets ignored.
+	 *
+	 * Default: false
+	 */
+	multipleCollections?: boolean;
+	/**
+	 * The number of stored transactions needed until they are merged
+	 * automatically into one Mongodb document.
+	 *
+	 * Default: 400
+	 */
+	flushSize?: number;
+}
 
 export class MongodbPersistence {
+	private flushSize: number;
+	private multipleCollections: boolean;
+	private tr: { [docName: string]: Promise<any> };
+	private _transact: <T>(docName: string, f: (db: MongoAdapter) => Promise<T>) => Promise<T>;
+
 	/**
 	 * Create a y-mongodb persistence instance.
 	 * @param {string} location The connection string for the MongoDB instance.
-	 * @param {object} [opts] Additional optional parameters.
-	 * @param {string} [opts.collectionName] Name of the collection where all
-	 * documents are stored. Default: "yjs-writings"
-	 * @param {boolean} [opts.multipleCollections] When set to true, each document gets
-	 * an own collection (instead of all documents stored in the same one). When set to true,
-	 * the option collectionName gets ignored. Default: false
-	 * @param {number} [opts.flushSize] The number of stored transactions needed until
-	 * they are merged automatically into one Mongodb document. Default: 400
+	 * @param {MongodbPersistenceOptions} [opts] Additional optional parameters.
 	 */
-	constructor(location, opts = {}) {
+	constructor(location: string, opts: MongodbPersistenceOptions = {}) {
 		const { collectionName = 'yjs-writings', multipleCollections = false, flushSize = 400 } = opts;
 		if (typeof collectionName !== 'string' || !collectionName) {
 			throw new Error(
@@ -38,7 +73,7 @@ export class MongodbPersistence {
 			collection: collectionName,
 			multipleCollections,
 		});
-		this.flushSize = flushSize ?? U.PREFERRED_TRIM_SIZE;
+		this.flushSize = flushSize ?? PREFERRED_TRIM_SIZE;
 		this.multipleCollections = multipleCollections;
 
 		// scope the queue of the transaction to each docName
@@ -57,18 +92,21 @@ export class MongodbPersistence {
 		 * @param {function(any):Promise<T>} f A transaction that receives the db object
 		 * @return {Promise<T>}
 		 */
-		this._transact = (docName, f) => {
+		this._transact = <T>(
+			docName: string,
+			f: (dbAdapter: MongoAdapter) => Promise<T>,
+		): Promise<T> => {
 			if (!this.tr[docName]) {
-				this.tr[docName] = promise.resolve();
+				this.tr[docName] = Promise.resolve();
 			}
 
 			const currTr = this.tr[docName];
-			let nextTr = null;
+			let nextTr: Promise<T | null> | null = null;
 
 			nextTr = (async () => {
 				await currTr;
 
-				let res = /** @type {any} */ (null);
+				let res: T | null = null;
 				try {
 					res = await f(db);
 				} catch (err) {
@@ -97,18 +135,17 @@ export class MongodbPersistence {
 	 * @param {string} docName
 	 * @return {Promise<Y.Doc>}
 	 */
-	getYDoc(docName) {
+	getYDoc(docName: string) {
 		return this._transact(docName, async (db) => {
-			const updates = await U.getMongoUpdates(db, docName);
+			const updates = await getMongoUpdates(db, docName);
 			const ydoc = new Y.Doc();
 			ydoc.transact(() => {
 				for (let i = 0; i < updates.length; i++) {
 					Y.applyUpdate(ydoc, updates[i]);
-					updates[i] = null;
 				}
 			});
 			if (updates.length > this.flushSize) {
-				await U.flushDocument(db, docName, Y.encodeStateAsUpdate(ydoc), Y.encodeStateVector(ydoc));
+				await flushDocument(db, docName, Y.encodeStateAsUpdate(ydoc), Y.encodeStateVector(ydoc));
 			}
 			return ydoc;
 		});
@@ -121,8 +158,8 @@ export class MongodbPersistence {
 	 * @param {Uint8Array} update
 	 * @return {Promise<number>} Returns the clock of the stored update
 	 */
-	storeUpdate(docName, update) {
-		return this._transact(docName, (db) => U.storeUpdate(db, docName, update));
+	storeUpdate(docName: string, update: Uint8Array) {
+		return this._transact(docName, (db) => storeUpdate(db, docName, update));
 	}
 
 	/**
@@ -133,20 +170,20 @@ export class MongodbPersistence {
 	 * @param {string} docName
 	 * @return {Promise<Uint8Array>}
 	 */
-	getStateVector(docName) {
+	getStateVector(docName: string) {
 		return this._transact(docName, async (db) => {
-			const { clock, sv } = await U.readStateVector(db, docName);
+			const { clock, sv } = await readStateVector(db, docName);
 			let curClock = -1;
 			if (sv !== null) {
-				curClock = await U.getCurrentUpdateClock(db, docName);
+				curClock = await getCurrentUpdateClock(db, docName);
 			}
 			if (sv !== null && clock === curClock) {
 				return sv;
 			} else {
 				// current state vector is outdated
-				const updates = await U.getMongoUpdates(db, docName);
-				const { update, sv: newSv } = U.mergeUpdates(updates);
-				await U.flushDocument(db, docName, update, newSv);
+				const updates = await getMongoUpdates(db, docName);
+				const { update, sv: newSv } = mergeUpdates(updates);
+				await flushDocument(db, docName, update, newSv);
 				return newSv;
 			}
 		});
@@ -158,7 +195,7 @@ export class MongodbPersistence {
 	 * @param {string} docName
 	 * @param {Uint8Array} stateVector
 	 */
-	async getDiff(docName, stateVector) {
+	async getDiff(docName: string, stateVector: Uint8Array) {
 		const ydoc = await this.getYDoc(docName);
 		return Y.encodeStateAsUpdate(ydoc, stateVector);
 	}
@@ -169,11 +206,11 @@ export class MongodbPersistence {
 	 * @param {string} docName
 	 * @return {Promise<void>}
 	 */
-	clearDocument(docName) {
+	clearDocument(docName: string) {
 		return this._transact(docName, async (db) => {
 			if (!this.multipleCollections) {
-				await db.del(U.createDocumentStateVectorKey(docName));
-				await U.clearUpdatesRange(db, docName, 0, binary.BITS32);
+				await db.del(createDocumentStateVectorKey(docName));
+				await clearUpdatesRange(db, docName, 0, binary.BITS32);
 			} else {
 				await db.dropCollection(docName);
 			}
@@ -190,11 +227,11 @@ export class MongodbPersistence {
 	 * @param {any} value
 	 * @return {Promise<void>}
 	 */
-	setMeta(docName, metaKey, value) {
+	setMeta(docName: string, metaKey: string, value: any) {
 		/*	Unlike y-leveldb, we simply store the value here without encoding
 	 		 it in a buffer beforehand. */
 		return this._transact(docName, async (db) => {
-			await db.put(U.createDocumentMetaKey(docName, metaKey), { value });
+			await db.put(createDocumentMetaKey(docName, metaKey), { value });
 		});
 	}
 
@@ -206,10 +243,10 @@ export class MongodbPersistence {
 	 * @param {string} metaKey
 	 * @return {Promise<any>}
 	 */
-	getMeta(docName, metaKey) {
+	getMeta(docName: string, metaKey: string) {
 		return this._transact(docName, async (db) => {
 			const res = await db.get({
-				...U.createDocumentMetaKey(docName, metaKey),
+				...createDocumentMetaKey(docName, metaKey),
 			});
 			if (!res?.value) {
 				return undefined;
@@ -225,10 +262,10 @@ export class MongodbPersistence {
 	 * @param {string} metaKey
 	 * @return {Promise<any>}
 	 */
-	delMeta(docName, metaKey) {
+	delMeta(docName: string, metaKey: string) {
 		return this._transact(docName, (db) =>
 			db.del({
-				...U.createDocumentMetaKey(docName, metaKey),
+				...createDocumentMetaKey(docName, metaKey),
 			}),
 		);
 	}
@@ -246,7 +283,7 @@ export class MongodbPersistence {
 			} else {
 				// when all docs are stored in the same collection we just need to get all
 				//  statevectors and return their names
-				const docs = await U.getAllSVDocs(db);
+				const docs = await getAllSVDocs(db);
 				return docs.map((doc) => doc.docName);
 			}
 		});
@@ -262,9 +299,9 @@ export class MongodbPersistence {
 	 */
 	getAllDocStateVectors() {
 		return this._transact('global', async (db) => {
-			const docs = await U.getAllSVDocs(db);
+			const docs = await getAllSVDocs(db);
 			return docs.map((doc) => {
-				const { sv, clock } = U.decodeMongodbStateVector(doc.value);
+				const { sv, clock } = decodeMongodbStateVector(doc.value);
 				return { name: doc.docName, sv, clock };
 			});
 		});
@@ -278,11 +315,11 @@ export class MongodbPersistence {
 	 * @param {string} docName
 	 * @return {Promise<void>}
 	 */
-	flushDocument(docName) {
+	flushDocument(docName: string) {
 		return this._transact(docName, async (db) => {
-			const updates = await U.getMongoUpdates(db, docName);
-			const { update, sv } = U.mergeUpdates(updates);
-			await U.flushDocument(db, docName, update, sv);
+			const updates = await getMongoUpdates(db, docName);
+			const { update, sv } = mergeUpdates(updates);
+			await flushDocument(db, docName, update, sv);
 		});
 	}
 
@@ -292,7 +329,7 @@ export class MongodbPersistence {
 	 */
 	flushDB() {
 		return this._transact('global', async (db) => {
-			await U.flushDB(db);
+			await flushDB(db);
 		});
 	}
 

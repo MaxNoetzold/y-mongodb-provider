@@ -1,6 +1,7 @@
-import { MongoClient } from 'mongodb';
+import { Db, MongoClient, SortDirection } from 'mongodb';
+import { DocumentUpdate, Query } from './types';
 
-function parseMongoDBConnectionString(connectionString) {
+function parseMongoDBConnectionString(connectionString: string) {
 	const url = new URL(connectionString);
 	const database = url.pathname.slice(1);
 	url.pathname = '/';
@@ -10,7 +11,28 @@ function parseMongoDBConnectionString(connectionString) {
 		linkWithoutDatabase: url.toString(),
 	};
 }
+
+interface MongoAdapterOptions {
+	/**
+	 * Name of the collection where all documents are stored.
+	 */
+	collection: string;
+	/**
+	 * When set to true, each document gets an own collection
+	 * (instead of all documents stored in the same one).
+	 * When set to true, the option $collection gets ignored.
+	 */
+	multipleCollections: boolean;
+}
+
 export class MongoAdapter {
+	private collection: string;
+	private multipleCollections: boolean;
+	private mongoUrl: string;
+	private databaseName: string;
+	private client: MongoClient;
+	private db: Db;
+
 	/**
 	 * Create a MongoAdapter instance.
 	 * @param {string} connectionString
@@ -20,7 +42,7 @@ export class MongoAdapter {
 	 * collection (instead of all documents stored in the same one).
 	 * When set to true, the option $collection gets ignored.
 	 */
-	constructor(connectionString, { collection, multipleCollections }) {
+	constructor(connectionString: string, { collection, multipleCollections }: MongoAdapterOptions) {
 		this.collection = collection;
 		this.multipleCollections = multipleCollections;
 		const connectionParams = parseMongoDBConnectionString(connectionString);
@@ -40,13 +62,18 @@ export class MongoAdapter {
 
 	/**
 	 * Get the MongoDB collection name for any docName
-	 * @param {object} opts
+	 * @param {Query} opts
 	 * @param {string} opts.docName
 	 * @returns {string} collectionName
 	 */
-	_getCollectionName({ docName }) {
+	_getCollectionName({ docName }: { docName?: string }) {
+		if (!docName && this.multipleCollections) {
+			throw new Error(
+				'_getCollectionName: docName must be provided when multipleCollections is true',
+			);
+		}
 		if (this.multipleCollections) {
-			return docName;
+			return docName as string;
 		} else {
 			return this.collection;
 		}
@@ -54,21 +81,21 @@ export class MongoAdapter {
 
 	/**
 	 * Apply a $query and get one document from MongoDB.
-	 * @param {object} query
-	 * @returns {Promise<object>}
+	 * @param {Query} query
+	 * @returns {Promise<DocumentUpdate>}
 	 */
-	get(query) {
+	get(query: Query) {
 		const collection = this.db.collection(this._getCollectionName(query));
-		return collection.findOne(query);
+		return collection.findOne(query) as Promise<DocumentUpdate>;
 	}
 
 	/**
 	 * Store one document in MongoDB.
-	 * @param {object} query
-	 * @param {object} values
-	 * @returns {Promise<object>} Stored document
+	 * @param {Query} query
+	 * @param {{ value: Uint8Array }} values
+	 * @returns {Promise<DocumentUpdate>} Stored document
 	 */
-	async put(query, values) {
+	async put(query: Query, values: { value: Uint8Array }) {
 		if (!query.docName || !query.version || !values.value) {
 			throw new Error('Document and version must be provided');
 		}
@@ -76,15 +103,15 @@ export class MongoAdapter {
 		const collection = this.db.collection(this._getCollectionName(query));
 
 		await collection.updateOne(query, { $set: values }, { upsert: true });
-		return this.get(query);
+		return this.get(query) as Promise<DocumentUpdate>;
 	}
 
 	/**
 	 * Removes all documents that fit the $query
-	 * @param {object} query
+	 * @param {Query} query
 	 * @returns {Promise<object>} Contains status of the operation
 	 */
-	del(query) {
+	del(query: Query) {
 		const collection = this.db.collection(this._getCollectionName(query));
 
 		/*
@@ -101,24 +128,26 @@ export class MongoAdapter {
 		return bulk.execute();
 	}
 
+	// TODO: Actually read as cursor and not as array
 	/**
 	 * Get all or at least $opts.limit documents that fit the $query.
 	 * @param {object} query
 	 * @param {object} [opts]
 	 * @param {number} [opts.limit]
 	 * @param {boolean} [opts.reverse]
-	 * @returns {Promise<Array<object>>}
+	 * @returns {Promise<DocumentUpdate[]>}
 	 */
-	readAsCursor(query, opts = {}) {
+	readAsCursor(query: Query, opts: { limit?: number; reverse?: boolean } = {}) {
 		const { limit = 0, reverse = false } = opts;
 
 		const collection = this.db.collection(this._getCollectionName(query));
 
-		/** @type {{ clock: 1 | -1, part: 1 | -1 }} */
-		const sortQuery = reverse ? { clock: -1, part: 1 } : { clock: 1, part: 1 };
+		const sortQuery: { clock: SortDirection; part: SortDirection } = reverse
+			? { clock: -1, part: 1 }
+			: { clock: 1, part: 1 };
 		const curs = collection.find(query).sort(sortQuery).limit(limit);
 
-		return curs.toArray();
+		return curs.toArray() as Promise<DocumentUpdate[]>;
 	}
 
 	/**
@@ -149,7 +178,7 @@ export class MongoAdapter {
 	 * Delete collection
 	 * @param {string} collectionName
 	 */
-	dropCollection(collectionName) {
+	dropCollection(collectionName: string) {
 		return this.db.collection(collectionName).drop();
 	}
 }

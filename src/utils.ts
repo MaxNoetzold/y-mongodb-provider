@@ -3,6 +3,8 @@ import * as binary from 'lib0/binary';
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import { Buffer } from 'buffer';
+import { MongoAdapter } from './mongo-adapter';
+import { DocumentUpdate, DocumentUpdateKey, Query } from './types';
 
 export const PREFERRED_TRIM_SIZE = 400;
 const MAX_DOCUMENT_SIZE = 15000000; // ~15MB (plus space for metadata)
@@ -10,13 +12,18 @@ const MAX_DOCUMENT_SIZE = 15000000; // ~15MB (plus space for metadata)
 /**
  * Remove all documents from db with Clock between $from and $to
  *
- * @param {any} db
+ * @param {MongoAdapter} db
  * @param {string} docName
  * @param {number} from Greater than or equal
  * @param {number} to lower than (not equal)
  * @return {Promise<void>}
  */
-export const clearUpdatesRange = async (db, docName, from, to) =>
+export const clearUpdatesRange = async (
+	db: MongoAdapter,
+	docName: string,
+	from: number,
+	to: number,
+) =>
 	db.del({
 		docName,
 		clock: {
@@ -29,18 +36,18 @@ export const clearUpdatesRange = async (db, docName, from, to) =>
  * Create a unique key for a update message.
  * @param {string} docName
  * @param {number} [clock] must be unique
- * @return {Object} [opts.version, opts.docName, opts.action, opts.clock]
+ * @return {DocumentUpdateKey}
  */
-export const createDocumentUpdateKey = (docName, clock) => {
+export const createDocumentUpdateKey = (docName: string, clock?: number) => {
 	if (clock !== undefined) {
-		return {
+		return <DocumentUpdateKey>{
 			version: 'v1',
 			action: 'update',
 			docName,
 			clock,
 		};
 	} else {
-		return {
+		return <DocumentUpdateKey>{
 			version: 'v1',
 			action: 'update',
 			docName,
@@ -53,7 +60,7 @@ export const createDocumentUpdateKey = (docName, clock) => {
  * @param {string} docName
  * @return {Object} [opts.docName, opts.version]
  */
-export const createDocumentStateVectorKey = (docName) => ({
+export const createDocumentStateVectorKey = (docName: string) => ({
 	docName,
 	version: 'v1_sv',
 });
@@ -63,25 +70,26 @@ export const createDocumentStateVectorKey = (docName) => ({
  * @param {string} metaKey
  * @return {Object} [opts.docName, opts.version, opts.docType, opts.metaKey]
  */
-export const createDocumentMetaKey = (docName, metaKey) => ({
+export const createDocumentMetaKey = (docName: string, metaKey: string) => ({
 	version: 'v1',
 	docName,
 	metaKey: `meta_${metaKey}`,
 });
 
 /**
- * @param {any} db
- * @param {object} query
+ * @param {MongoAdapter} db
+ * @param {Query} query
  * @param {object} opts
- * @return {Promise<any[]>}
+ * @return {Promise<DocumentUpdate[]>}
  */
-export const _getMongoBulkData = (db, query, opts) => db.readAsCursor(query, opts);
+const _getMongoBulkData = (db: MongoAdapter, query: Query, opts: object) =>
+	db.readAsCursor(query, opts);
 
 /**
  * @param {any} db
  * @return {Promise<any>}
  */
-export const flushDB = (db) => db.flush();
+export const flushDB = (db: MongoAdapter) => db.flush();
 
 /**
  *
@@ -90,29 +98,33 @@ export const flushDB = (db) => db.flush();
  * For split documents, it collects all the parts and merges them together.
  * It assumes that the parts of a split document are ordered and located exactly after the document with part number 1.
  *
- * @param {any[]} docs
+ * @param {DocumentUpdate[]} docs
  * @return {Buffer[]}
  */
-const _convertMongoUpdates = (docs) => {
+const _convertMongoUpdates = (docs: DocumentUpdate[]) => {
 	if (!Array.isArray(docs) || !docs.length) return [];
 
-	const updates = [];
+	const updates: Uint8Array[] = [];
 	for (let i = 0; i < docs.length; i++) {
 		const doc = docs[i];
 		if (!doc.part) {
-			updates.push(doc.value.buffer);
+			/*
+                Note: The code works fine without the new Unit8Array() wrapper,
+                but it is added to make the code more consistent.
+            */
+			updates.push(new Uint8Array(doc.value.buffer));
 		} else if (doc.part === 1) {
 			// merge the docs together that got split because of mongodb size limits
-			const parts = [doc.value.buffer];
+			const parts: Uint8Array[] = [new Uint8Array(doc.value.buffer)];
 			let j;
 			let currentPartId = doc.part;
 			for (j = i + 1; j < docs.length; j++) {
 				const part = docs[j];
 				if (part.clock === doc.clock) {
-					if (currentPartId !== part.part - 1) {
+					if (!part.part || currentPartId !== part.part - 1) {
 						throw new Error('Couldnt merge updates together because a part is missing!');
 					}
-					parts.push(part.value.buffer);
+					parts.push(new Uint8Array(part.value.buffer));
 					currentPartId = part.part;
 				} else {
 					break;
@@ -132,9 +144,8 @@ const _convertMongoUpdates = (docs) => {
  * @param {any} db
  * @param {string} docName
  * @param {any} [opts]
- * @return {Promise<any[]>}
  */
-export const getMongoUpdates = async (db, docName, opts = {}) => {
+export const getMongoUpdates = async (db: MongoAdapter, docName: string, opts = {}) => {
 	const docs = await _getMongoBulkData(db, createDocumentUpdateKey(docName), opts);
 	return _convertMongoUpdates(docs);
 };
@@ -144,7 +155,7 @@ export const getMongoUpdates = async (db, docName, opts = {}) => {
  * @param {string} docName
  * @return {Promise<number>} Returns -1 if this document doesn't exist yet
  */
-export const getCurrentUpdateClock = (db, docName) =>
+export const getCurrentUpdateClock = (db: MongoAdapter, docName: string) =>
 	_getMongoBulkData(
 		db,
 		{
@@ -170,7 +181,12 @@ export const getCurrentUpdateClock = (db, docName) =>
  * @param {number} clock current clock of the document so we can determine
  * when this statevector was created
  */
-export const writeStateVector = async (db, docName, sv, clock) => {
+export const writeStateVector = async (
+	db: MongoAdapter,
+	docName: string,
+	sv: Uint8Array,
+	clock: number,
+) => {
 	const encoder = encoding.createEncoder();
 	encoding.writeVarUint(encoder, clock);
 	encoding.writeVarUint8Array(encoder, sv);
@@ -185,7 +201,7 @@ export const writeStateVector = async (db, docName, sv, clock) => {
  * @param {Uint8Array} update
  * @return {Promise<number>} Returns the clock of the stored update
  */
-export const storeUpdate = async (db, docName, update) => {
+export const storeUpdate = async (db: MongoAdapter, docName: string, update: Uint8Array) => {
 	const clock = await getCurrentUpdateClock(db, docName);
 	if (clock === -1) {
 		// make sure that a state vector is always written, so we can search for available documents
@@ -204,7 +220,7 @@ export const storeUpdate = async (db, docName, update) => {
 	} else {
 		const totalChunks = Math.ceil(update.length / MAX_DOCUMENT_SIZE);
 
-		const putPromises = [];
+		const putPromises: Promise<DocumentUpdate>[] = [];
 		for (let i = 0; i < totalChunks; i++) {
 			const start = i * MAX_DOCUMENT_SIZE;
 			const end = Math.min(start + MAX_DOCUMENT_SIZE, update.length);
@@ -225,10 +241,10 @@ export const storeUpdate = async (db, docName, update) => {
  * For now this is a helper method that creates a Y.Doc and then re-encodes a document update.
  * In the future this will be handled by Yjs without creating a Y.Doc (constant memory consumption).
  *
- * @param {Array<Uint8Array>} updates
+ * @param {Uint8Array[]} updates
  * @return {{update:Uint8Array, sv: Uint8Array}}
  */
-export const mergeUpdates = (updates) => {
+export const mergeUpdates = (updates: Uint8Array[]) => {
 	const ydoc = new Y.Doc();
 	ydoc.transact(() => {
 		for (let i = 0; i < updates.length; i++) {
@@ -242,7 +258,7 @@ export const mergeUpdates = (updates) => {
  * @param {Uint8Array} buf
  * @return {{ sv: Uint8Array, clock: number }}
  */
-export const decodeMongodbStateVector = (buf) => {
+export const decodeMongodbStateVector = (buf: Uint8Array | { buffer: Uint8Array }) => {
 	let decoder;
 	if (Buffer.isBuffer(buf)) {
 		decoder = decoding.createDecoder(buf);
@@ -260,7 +276,7 @@ export const decodeMongodbStateVector = (buf) => {
  * @param {any} db
  * @param {string} docName
  */
-export const readStateVector = async (db, docName) => {
+export const readStateVector = async (db: MongoAdapter, docName: string) => {
 	const doc = await db.get({ ...createDocumentStateVectorKey(docName) });
 	if (!doc?.value) {
 		// no state vector created yet or no document exists
@@ -269,7 +285,7 @@ export const readStateVector = async (db, docName) => {
 	return decodeMongodbStateVector(doc.value);
 };
 
-export const getAllSVDocs = async (db) => db.readAsCursor({ version: 'v1_sv' });
+export const getAllSVDocs = async (db: MongoAdapter) => db.readAsCursor({ version: 'v1_sv' });
 
 /**
  * Merge all MongoDB documents of the same yjs document together.
@@ -279,7 +295,12 @@ export const getAllSVDocs = async (db) => db.readAsCursor({ version: 'v1_sv' });
  * @param {Uint8Array} stateVector
  * @return {Promise<number>} returns the clock of the flushed doc
  */
-export const flushDocument = async (db, docName, stateAsUpdate, stateVector) => {
+export const flushDocument = async (
+	db: MongoAdapter,
+	docName: string,
+	stateAsUpdate: Uint8Array,
+	stateVector: Uint8Array,
+) => {
 	const clock = await storeUpdate(db, docName, stateAsUpdate);
 	await writeStateVector(db, docName, stateVector, clock);
 	await clearUpdatesRange(db, docName, 0, clock);
