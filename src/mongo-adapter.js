@@ -1,5 +1,12 @@
 import { MongoClient } from 'mongodb';
 
+/**
+ * Parse a MongoDB connection string and return the database name
+ * and the connection string without the database name.
+ *
+ * @param {string} connectionString
+ * @returns {{ database: string, linkWithoutDatabase: string }}
+ */
 function parseMongoDBConnectionString(connectionString) {
 	const url = new URL(connectionString);
 	const database = url.pathname.slice(1);
@@ -10,6 +17,7 @@ function parseMongoDBConnectionString(connectionString) {
 		linkWithoutDatabase: url.toString(),
 	};
 }
+
 export class MongoAdapter {
 	/**
 	 * Create a MongoAdapter instance.
@@ -40,8 +48,7 @@ export class MongoAdapter {
 
 	/**
 	 * Get the MongoDB collection name for any docName
-	 * @param {object} opts
-	 * @param {string} opts.docName
+	 * @param {import('mongodb').Filter<import('mongodb').Document>} query
 	 * @returns {string} collectionName
 	 */
 	_getCollectionName({ docName }) {
@@ -53,20 +60,36 @@ export class MongoAdapter {
 	}
 
 	/**
-	 * Apply a $query and get one document from MongoDB.
-	 * @param {object} query
-	 * @returns {Promise<object>}
+	 *
+	 * @param {import('mongodb').Filter<import('mongodb').Document>} query
+	 * @param {{limit?: number; reverse?: boolean;}} [options]
+	 * @returns {Promise<import('mongodb').WithId<import('mongodb').Document>[]>}
 	 */
-	get(query) {
+	find(query, options) {
+		const { limit = 0, reverse = false } = options || {};
+
+		/** @type {{ clock: 1 | -1, part: 1 | -1 }} */
+		const sortQuery = reverse ? { clock: -1, part: 1 } : { clock: 1, part: 1 };
+
 		const collection = this.db.collection(this._getCollectionName(query));
-		return collection.findOne(query);
+		return collection.find(query, { limit, sort: sortQuery }).toArray();
+	}
+
+	/**
+	 * Apply a $query and get one document from MongoDB.
+	 * @param {import('mongodb').Filter<import('mongodb').Document>} query
+	 * @param {{limit?: number; reverse?: boolean;}} [options]
+	 * @returns {Promise<import('mongodb').WithId<import('mongodb').Document> | null>}
+	 */
+	findOne(query, options) {
+		return this.find(query, options).then((docs) => docs[0] || null);
 	}
 
 	/**
 	 * Store one document in MongoDB.
-	 * @param {object} query
-	 * @param {object} values
-	 * @returns {Promise<object>} Stored document
+	 * @param {import('mongodb').Filter<import('mongodb').Document>} query
+	 * @param {import('mongodb').UpdateFilter<import('mongodb').Document>} values
+	 * @returns {Promise<import('mongodb').WithId<import('mongodb').Document> | null>} Stored document
 	 */
 	async put(query, values) {
 		if (!query.docName || !query.version || !values.value) {
@@ -76,15 +99,15 @@ export class MongoAdapter {
 		const collection = this.db.collection(this._getCollectionName(query));
 
 		await collection.updateOne(query, { $set: values }, { upsert: true });
-		return this.get(query);
+		return this.findOne(query);
 	}
 
 	/**
 	 * Removes all documents that fit the $query
-	 * @param {object} query
-	 * @returns {Promise<object>} Contains status of the operation
+	 * @param {import('mongodb').Filter<import('mongodb').Document>} query
+	 * @returns {Promise<import('mongodb').BulkWriteResult>} Contains status of the operation
 	 */
-	del(query) {
+	delete(query) {
 		const collection = this.db.collection(this._getCollectionName(query));
 
 		/*
@@ -99,26 +122,6 @@ export class MongoAdapter {
 		const bulk = collection.initializeOrderedBulkOp();
 		bulk.find(query).delete();
 		return bulk.execute();
-	}
-
-	/**
-	 * Get all or at least $opts.limit documents that fit the $query.
-	 * @param {object} query
-	 * @param {object} [opts]
-	 * @param {number} [opts.limit]
-	 * @param {boolean} [opts.reverse]
-	 * @returns {Promise<Array<object>>}
-	 */
-	readAsCursor(query, opts = {}) {
-		const { limit = 0, reverse = false } = opts;
-
-		const collection = this.db.collection(this._getCollectionName(query));
-
-		/** @type {{ clock: 1 | -1, part: 1 | -1 }} */
-		const sortQuery = reverse ? { clock: -1, part: 1 } : { clock: 1, part: 1 };
-		const curs = collection.find(query).sort(sortQuery).limit(limit);
-
-		return curs.toArray();
 	}
 
 	/**
