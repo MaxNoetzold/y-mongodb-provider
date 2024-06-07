@@ -257,7 +257,6 @@ export class MongodbPersistence {
 	 * !Note: The state vectors might be outdated if the associated document
 	 * is not yet flushed. So use with caution.
 	 * @return {Promise<{ name: string, sv: Uint8Array, clock: number }[]>}
-	 * @todo may not work?
 	 */
 	getAllDocStateVectors() {
 		return this._transact('global', async (db) => {

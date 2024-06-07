@@ -234,7 +234,7 @@ export const mergeUpdates = (updates) => {
 };
 
 /**
- * @param {Uint8Array} buf TODO
+ * @param {import("mongodb").Binary} buf
  * @return {{ sv: Uint8Array, clock: number }}
  */
 export const decodeMongodbStateVector = (buf) => {
