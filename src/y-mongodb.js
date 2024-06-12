@@ -54,7 +54,7 @@ export class MongodbPersistence {
 		 *
 		 * @template T
 		 *
-		 * @param {function(any):Promise<T>} f A transaction that receives the db object
+		 * @param {function(MongoAdapter):Promise<T>} f A transaction that receives the db object
 		 * @return {Promise<T>}
 		 */
 		this._transact = (docName, f) => {
@@ -104,7 +104,6 @@ export class MongodbPersistence {
 			ydoc.transact(() => {
 				for (let i = 0; i < updates.length; i++) {
 					Y.applyUpdate(ydoc, updates[i]);
-					updates[i] = null;
 				}
 			});
 			if (updates.length > this.flushSize) {
@@ -172,7 +171,7 @@ export class MongodbPersistence {
 	clearDocument(docName) {
 		return this._transact(docName, async (db) => {
 			if (!this.multipleCollections) {
-				await db.del(U.createDocumentStateVectorKey(docName));
+				await db.delete(U.createDocumentStateVectorKey(docName));
 				await U.clearUpdatesRange(db, docName, 0, binary.BITS32);
 			} else {
 				await db.dropCollection(docName);
@@ -208,7 +207,7 @@ export class MongodbPersistence {
 	 */
 	getMeta(docName, metaKey) {
 		return this._transact(docName, async (db) => {
-			const res = await db.get({
+			const res = await db.findOne({
 				...U.createDocumentMetaKey(docName, metaKey),
 			});
 			if (!res?.value) {
@@ -227,7 +226,7 @@ export class MongodbPersistence {
 	 */
 	delMeta(docName, metaKey) {
 		return this._transact(docName, (db) =>
-			db.del({
+			db.delete({
 				...U.createDocumentMetaKey(docName, metaKey),
 			}),
 		);
@@ -258,7 +257,6 @@ export class MongodbPersistence {
 	 * !Note: The state vectors might be outdated if the associated document
 	 * is not yet flushed. So use with caution.
 	 * @return {Promise<{ name: string, sv: Uint8Array, clock: number }[]>}
-	 * @todo may not work?
 	 */
 	getAllDocStateVectors() {
 		return this._transact('global', async (db) => {

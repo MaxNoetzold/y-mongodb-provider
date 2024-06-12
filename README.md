@@ -245,7 +245,13 @@ We welcome contributions! Please follow these steps to contribute:
 3. Make your changes and ensure tests pass: `npm test`.
 4. Submit a pull request with your changes.
 
-## Testing
+### Note about TypeScript
+
+We use type checking and type file generation with JSDoc comments. We do not use TypeScript in this project. We want to keep close to the original Yjs project, which is written in JavaScript. To read more about the decision to use JSDoc comments instead of the more conventional TypeScript, see [this issue](https://discuss.yjs.dev/t/why-are-yjs-types-writen-with-jsdocs-and-not-typescript/2668/3).
+
+If you are adding new functionality, please ensure that you add JSDoc comments to your code.
+
+### Testing
 
 To run the test suite, use the following command:
 
