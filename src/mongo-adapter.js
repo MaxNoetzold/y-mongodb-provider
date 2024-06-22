@@ -1,21 +1,15 @@
 import { MongoClient } from 'mongodb';
 
 /**
- * Parse a MongoDB connection string and return the database name
- * and the connection string without the database name.
+ * Parse a MongoDB connection string and return the database name.
  *
  * @param {string} connectionString
- * @returns {{ database: string, linkWithoutDatabase: string }}
+ * @returns {string}
  */
-function parseMongoDBConnectionString(connectionString) {
+function getMongoDbDatabaseName(connectionString) {
 	const url = new URL(connectionString);
 	const database = url.pathname.slice(1);
-	url.pathname = '/';
-
-	return {
-		database,
-		linkWithoutDatabase: url.toString(),
-	};
+	return database;
 }
 
 export class MongoAdapter {
@@ -31,19 +25,17 @@ export class MongoAdapter {
 	constructor(connectionString, { collection, multipleCollections }) {
 		this.collection = collection;
 		this.multipleCollections = multipleCollections;
-		const connectionParams = parseMongoDBConnectionString(connectionString);
-		this.mongoUrl = connectionParams.linkWithoutDatabase;
-		this.databaseName = connectionParams.database;
-		this.client = new MongoClient(this.mongoUrl);
+		const databaseName = getMongoDbDatabaseName(connectionString);
 		/*
-			client.connect() is optional since v4.7
+			NOTE: client.connect() is optional since v4.7
 			"However, MongoClient.connect can still be called manually and remains useful for
 			learning about misconfiguration (auth, server not started, connection string correctness)
 			early in your application's startup."
 
 			I will not use it for now, but may change that in the future.
 		*/
-		this.db = this.client.db(this.databaseName);
+		this.client = new MongoClient(connectionString);
+		this.db = this.client.db(databaseName);
 	}
 
 	/**
