@@ -1,49 +1,54 @@
 import { MongoClient } from 'mongodb';
 
 /**
- * Parse a MongoDB connection string and return the database name
- * and the connection string without the database name.
+ * Parse a MongoDB connection string and return the database name.
  *
  * @param {string} connectionString
- * @returns {{ database: string, linkWithoutDatabase: string }}
+ * @returns {string}
  */
-function parseMongoDBConnectionString(connectionString) {
+function getMongoDbDatabaseName(connectionString) {
 	const url = new URL(connectionString);
 	const database = url.pathname.slice(1);
-	url.pathname = '/';
-
-	return {
-		database,
-		linkWithoutDatabase: url.toString(),
-	};
+	return database;
 }
 
 export class MongoAdapter {
 	/**
 	 * Create a MongoAdapter instance.
-	 * @param {string} connectionString
+	 * @param {string|{client: MongoClient, db: import('mongodb').Db}} dbConnection A MongoDB connection string or an object containing a MongoClient instance (`client`) and a database instance (`db`).
 	 * @param {object} opts
 	 * @param {string} opts.collection Name of the collection where all documents are stored.
 	 * @param {boolean} opts.multipleCollections When set to true, each document gets an own
 	 * collection (instead of all documents stored in the same one).
 	 * When set to true, the option $collection gets ignored.
 	 */
-	constructor(connectionString, { collection, multipleCollections }) {
+	constructor(dbConnection, { collection, multipleCollections }) {
 		this.collection = collection;
 		this.multipleCollections = multipleCollections;
-		const connectionParams = parseMongoDBConnectionString(connectionString);
-		this.mongoUrl = connectionParams.linkWithoutDatabase;
-		this.databaseName = connectionParams.database;
-		this.client = new MongoClient(this.mongoUrl);
+
+		if (typeof dbConnection === 'string') {
+			// Connection string logic
+			const databaseName = getMongoDbDatabaseName(dbConnection);
+			this.client = new MongoClient(dbConnection);
+			this.db = this.client.db(databaseName);
+		} else if (typeof dbConnection === 'object' && dbConnection.client && dbConnection.db) {
+			// Connection object logic
+			this.client = dbConnection.client;
+			this.db = dbConnection.db;
+		} else {
+			throw new Error(
+				'Invalid dbConnection. Must be a connection string or an object with client and db.',
+			);
+		}
+
 		/*
-			client.connect() is optional since v4.7
+			NOTE: client.connect() is optional since v4.7
 			"However, MongoClient.connect can still be called manually and remains useful for
 			learning about misconfiguration (auth, server not started, connection string correctness)
 			early in your application's startup."
 
 			I will not use it for now, but may change that in the future.
 		*/
-		this.db = this.client.db(this.databaseName);
 	}
 
 	/**

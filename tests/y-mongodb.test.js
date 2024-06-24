@@ -6,6 +6,23 @@ const { MongoClient } = require('mongodb');
 const { MongodbPersistence } = require('../dist/y-mongodb.cjs');
 const generateLargeText = require('./generateLargeText.js');
 
+const storeDocWithText = async (mongodbPersistence, docName, content) => {
+	const ydoc = new Y.Doc();
+	// to wait for the update to be stored in the database before we check
+	const updatePromise = new Promise((resolve) => {
+		ydoc.on('update', async (update) => {
+			await mongodbPersistence.storeUpdate(docName, update);
+			resolve();
+		});
+	});
+
+	const yText = ydoc.getText('name');
+	yText.insert(0, content);
+
+	// Wait for the update to be stored
+	await updatePromise;
+};
+
 describe('meta with single collection', () => {
 	let mongoServer;
 	let mongodbPersistence;
@@ -64,35 +81,20 @@ describe('meta with single collection', () => {
 	});
 });
 
-const storeDocWithText = async (mongodbPersistence, docName, content) => {
-	const ydoc = new Y.Doc();
-	// to wait for the update to be stored in the database before we check
-	const updatePromise = new Promise((resolve) => {
-		ydoc.on('update', async (update) => {
-			await mongodbPersistence.storeUpdate(docName, update);
-			resolve();
-		});
-	});
-
-	const yText = ydoc.getText('name');
-	yText.insert(0, content);
-
-	// Wait for the update to be stored
-	await updatePromise;
-};
-
-describe('store and retrieve updates with single collection', () => {
+describe('store and retrieve updates in single collection with connection uri', () => {
 	let mongoServer;
 	let mongodbPersistence;
 	let mongoConnection;
+	const dbName = 'test';
 	const docName = 'testDoc';
 	const collectionName = 'testCollection';
 	const content = 'Testtext';
 
 	beforeAll(async () => {
 		mongoServer = await MongoMemoryServer.create();
-		mongodbPersistence = new MongodbPersistence(mongoServer.getUri(), { collectionName });
-		mongoConnection = await MongoClient.connect(mongoServer.getUri(), {});
+		const connectionStr = `${mongoServer.getUri()}${dbName}`;
+		mongodbPersistence = new MongodbPersistence(connectionStr, { collectionName });
+		mongoConnection = await MongoClient.connect(connectionStr, {});
 	});
 
 	afterAll(async () => {
@@ -111,7 +113,7 @@ describe('store and retrieve updates with single collection', () => {
 		await storeDocWithText(mongodbPersistence, docName, content);
 
 		// Check data is stored in the database via the native mongo client
-		const db = mongoConnection.db(mongoServer.instanceInfo.dbName);
+		const db = mongoConnection.db(dbName);
 		const collection = db.collection(collectionName);
 		const count = await collection.countDocuments();
 
@@ -133,7 +135,7 @@ describe('store and retrieve updates with single collection', () => {
 
 		await storeDocWithText(mongodbPersistence, docName, nextContent);
 
-		const db = mongoConnection.db(mongoServer.instanceInfo.dbName);
+		const db = mongoConnection.db(dbName);
 		const collection = db.collection(collectionName);
 		const count = await collection.countDocuments();
 
@@ -142,7 +144,7 @@ describe('store and retrieve updates with single collection', () => {
 	});
 
 	it("should flush document's updates", async () => {
-		const db = mongoConnection.db(mongoServer.instanceInfo.dbName);
+		const db = mongoConnection.db(dbName);
 		const collection = db.collection(collectionName);
 		const count = await collection.countDocuments();
 
@@ -153,6 +155,57 @@ describe('store and retrieve updates with single collection', () => {
 
 		const secondCount = await collection.countDocuments();
 		expect(secondCount).toEqual(2);
+	});
+});
+
+describe('store and retrieve updates in single collection with external MongoClient', () => {
+	let mongoServer;
+	let mongodbPersistence;
+	let mongoClient;
+	const dbName = 'test';
+	const docName = 'testDoc';
+	const collectionName = 'testCollection';
+	const content = 'Testtext';
+
+	beforeAll(async () => {
+		mongoServer = await MongoMemoryServer.create();
+		mongoClient = new MongoClient(mongoServer.getUri());
+		await mongoClient.connect();
+		const db = mongoClient.db(dbName);
+		mongodbPersistence = new MongodbPersistence({ client: mongoClient, db }, { collectionName });
+	});
+
+	afterAll(async () => {
+		if (mongodbPersistence) {
+			await mongodbPersistence.destroy();
+		}
+		if (mongoClient) {
+			await mongoClient.close();
+		}
+		if (mongoServer) {
+			await mongoServer.stop();
+		}
+	});
+
+	it('should store updates', async () => {
+		await storeDocWithText(mongodbPersistence, docName, content);
+
+		// Check data is stored in the database via the native mongo client
+		const db = mongoClient.db(dbName);
+		const collection = db.collection(collectionName);
+		const count = await collection.countDocuments();
+
+		// it will be two because one is the stateVector and the other is the update
+		expect(count).toEqual(2);
+	});
+
+	it('should retrieve stored docs', async () => {
+		const persistedYdoc = await mongodbPersistence.getYDoc(docName);
+
+		const yText = persistedYdoc.getText('name');
+		const yTextContent = yText.toString();
+
+		expect(yTextContent).toEqual(content);
 	});
 });
 
