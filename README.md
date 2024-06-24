@@ -85,29 +85,31 @@ server.listen(port, () => {
 
 ## API
 
-### `persistence = MongodbPersistence(connectionLink: string, options: object)`
+### `persistence = MongodbPersistence(connectionObj: string|{ client: MongoClient, db: Db }, options: object)`
 
 Create a y-mongodb-provider persistence instance.
 
 ```js
 import { MongodbPersistence } from 'y-mongodb-provider';
 
-const persistence = new MongodbPersistence('connectionString', {
+const persistence = new MongodbPersistence(connectionObj, {
 	collectionName,
 	flushSize,
 	multipleCollections,
 });
 ```
 
+`connectionObj` can be a connection string or an object with a client and db property. If you pass a connection string, the client and db will be created for you. [It is recommended to use the object form if you use the same client on other parts of your application as well](https://www.mongodb.com/docs/manual/administration/connection-pool-overview/#create-and-use-a-connection-pool).
+
 Options:
 
-- collectionName
+- `collectionName`
   - Name of the collection where all documents are stored
   - Default: `"yjs-writings"`
-- flushSize
+- `flushSize`
   - The number of transactions needed until they are merged automatically into one document
   - Default: `400`
-- multipleCollections
+- `multipleCollections`
   - When set to true, each document gets an own collection (instead of all documents stored in the same one)
   - When set to true, the option collectionName gets ignored.
   - Default: `false`

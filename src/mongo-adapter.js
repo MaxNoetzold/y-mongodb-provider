@@ -15,17 +15,32 @@ function getMongoDbDatabaseName(connectionString) {
 export class MongoAdapter {
 	/**
 	 * Create a MongoAdapter instance.
-	 * @param {string} connectionString
+	 * @param {string|{client: MongoClient, db: import('mongodb').Db}} dbConnection A MongoDB connection string or an object containing a MongoClient instance (`client`) and a database instance (`db`).
 	 * @param {object} opts
 	 * @param {string} opts.collection Name of the collection where all documents are stored.
 	 * @param {boolean} opts.multipleCollections When set to true, each document gets an own
 	 * collection (instead of all documents stored in the same one).
 	 * When set to true, the option $collection gets ignored.
 	 */
-	constructor(connectionString, { collection, multipleCollections }) {
+	constructor(dbConnection, { collection, multipleCollections }) {
 		this.collection = collection;
 		this.multipleCollections = multipleCollections;
-		const databaseName = getMongoDbDatabaseName(connectionString);
+
+		if (typeof dbConnection === 'string') {
+			// Connection string logic
+			const databaseName = getMongoDbDatabaseName(dbConnection);
+			this.client = new MongoClient(dbConnection);
+			this.db = this.client.db(databaseName);
+		} else if (typeof dbConnection === 'object' && dbConnection.client && dbConnection.db) {
+			// Connection object logic
+			this.client = dbConnection.client;
+			this.db = dbConnection.db;
+		} else {
+			throw new Error(
+				'Invalid dbConnection. Must be a connection string or an object with client and db.',
+			);
+		}
+
 		/*
 			NOTE: client.connect() is optional since v4.7
 			"However, MongoClient.connect can still be called manually and remains useful for
@@ -34,8 +49,6 @@ export class MongoAdapter {
 
 			I will not use it for now, but may change that in the future.
 		*/
-		this.client = new MongoClient(connectionString);
-		this.db = this.client.db(databaseName);
 	}
 
 	/**

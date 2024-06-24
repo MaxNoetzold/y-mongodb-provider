@@ -7,7 +7,7 @@ import * as U from './utils.js';
 export class MongodbPersistence {
 	/**
 	 * Create a y-mongodb persistence instance.
-	 * @param {string} location The connection string for the MongoDB instance.
+	 * @param {string|{client: import('mongodb').MongoClient, db: import('mongodb').Db}} connectionObj A MongoDB connection string or an object containing a MongoClient instance (`client`) and a database instance (`db`).
 	 * @param {object} [opts] Additional optional parameters.
 	 * @param {string} [opts.collectionName] Name of the collection where all
 	 * documents are stored. Default: "yjs-writings"
@@ -17,7 +17,7 @@ export class MongodbPersistence {
 	 * @param {number} [opts.flushSize] The number of stored transactions needed until
 	 * they are merged automatically into one Mongodb document. Default: 400
 	 */
-	constructor(location, opts = {}) {
+	constructor(connectionObj, opts = {}) {
 		const { collectionName = 'yjs-writings', multipleCollections = false, flushSize = 400 } = opts;
 		if (typeof collectionName !== 'string' || !collectionName) {
 			throw new Error(
@@ -34,7 +34,7 @@ export class MongodbPersistence {
 				'Constructor option "flushSize" is not a valid number. Either dont use this option (default is "400") or use a valid number larger than 0! Take a look into the Readme for more information: https://github.com/MaxNoetzold/y-mongodb-provider#persistence--mongodbpersistenceconnectionlink-string-options-object',
 			);
 		}
-		const db = new MongoAdapter(location, {
+		const db = new MongoAdapter(connectionObj, {
 			collection: collectionName,
 			multipleCollections,
 		});
