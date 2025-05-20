@@ -107,19 +107,18 @@ export class MongodbPersistence {
 					try {
 						Y.applyUpdate(ydoc, updates[i]);
 					} catch (e) {
-						console.warn(
-							`Failed to apply update ${i} to document "${docName}".`,
-							e,
-							'Update:',
-							updates[i],
-						);
+						console.warn(`Failed to apply update ${i} to document "${docName}".`, e);
 					}
 					applyNum += 1;
 				}
 			});
 			if (updates.length > this.flushSize && applyNum === updates.length) {
+				// 情况1: 更新数量超过阈值并且全部应用成功，执行文档刷新
 				await U.flushDocument(db, docName, Y.encodeStateAsUpdate(ydoc), Y.encodeStateVector(ydoc));
-			} else {
+			} else if (applyNum === updates.length) {
+				/* empty */
+			} else if (applyNum !== updates.length) {
+				// 情况3: 无法应用所有更新，记录警告
 				console.warn(
 					`Failed to apply all updates to document "${docName}". Applied ${applyNum}/${updates.length} updates.`,
 				);

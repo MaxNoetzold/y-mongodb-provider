@@ -1,6 +1,6 @@
 {
 	"name": "y-mongodb-provider-crashsafe",
-	"version": "0.2.0",
+	"version": "0.2.2",
 	"description": "MongoDB database adapter for Yjs",
 	"type": "module",
 	"main": "./dist/y-mongodb.cjs",
