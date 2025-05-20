@@ -117,7 +117,7 @@ export class MongodbPersistence {
 					applyNum += 1;
 				}
 			});
-			if (updates.length > this.flushSize && applyNum === updates.length - 1) {
+			if (updates.length > this.flushSize && applyNum === updates.length) {
 				await U.flushDocument(db, docName, Y.encodeStateAsUpdate(ydoc), Y.encodeStateVector(ydoc));
 			} else {
 				console.warn(
