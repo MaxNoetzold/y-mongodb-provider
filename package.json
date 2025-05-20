@@ -1,5 +1,5 @@
 {
-	"name": "y-mongodb-provider",
+	"name": "y-mongodb-provider-crashsafe",
 	"version": "0.2.0",
 	"description": "MongoDB database adapter for Yjs",
 	"type": "module",
@@ -23,12 +23,12 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/MaxNoetzold/y-mongodb-provider.git"
+		"url": "git+https://github.com/lukenc/y-mongodb-provider.git"
 	},
 	"author": "Max Nötzold <max.noetzold@gmail.com>",
 	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/MaxNoetzold/y-mongodb-provider/issues"
+		"url": "https://github.com/lukenc/y-mongodb-provider/issues"
 	},
 	"dependencies": {
 		"lib0": "^0.2.94",
@@ -54,7 +54,7 @@
 		"dist/*",
 		"src/*"
 	],
-	"homepage": "https://github.com/MaxNoetzold/y-mongodb-provider#readme",
+	"homepage": "https://github.com/lukenc/y-mongodb-provider#readme",
 	"keywords": [
 		"Yjs",
 		"MongoDB",
