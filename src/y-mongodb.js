@@ -101,13 +101,28 @@ export class MongodbPersistence {
 		return this._transact(docName, async (db) => {
 			const updates = await U.getMongoUpdates(db, docName);
 			const ydoc = new Y.Doc();
+			let applyNum = 0;
 			ydoc.transact(() => {
 				for (let i = 0; i < updates.length; i++) {
-					Y.applyUpdate(ydoc, updates[i]);
+					try {
+						Y.applyUpdate(ydoc, updates[i]);
+					} catch (e) {
+						console.warn(
+							`Failed to apply update ${i} to document "${docName}".`,
+							e,
+							'Update:',
+							updates[i],
+						);
+					}
+					applyNum += 1;
 				}
 			});
-			if (updates.length > this.flushSize) {
+			if (updates.length > this.flushSize && applyNum === updates.length - 1) {
 				await U.flushDocument(db, docName, Y.encodeStateAsUpdate(ydoc), Y.encodeStateVector(ydoc));
+			} else {
+				console.warn(
+					`Failed to apply all updates to document "${docName}". Applied ${applyNum}/${updates.length} updates.`,
+				);
 			}
 			return ydoc;
 		});
